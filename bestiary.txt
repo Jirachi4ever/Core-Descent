@@ -1,0 +1,13 @@
+Goblin
+1 15 5 5 Comun
+Rata
+2 20 10 2 Comun
+Golem de Barro
+3 50 5 30 Comun
+Elemental de Fuego
+4 20 15 10 Comun
+Goblin Arquero
+5 15 15 2 Comun
+Hobgoblin
+6 30 20 15 Raro
+
