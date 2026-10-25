@@ -1,0 +1,10 @@
+Pocion Curativa
+1 25 Healing
+Poción de Furia
+2 3 Damage_Buff
+Poción de Piel de Hierro
+3 2 Defense_Buff
+Elixir de vida
+4 100 Healing_MAX
+Poción Curativa Grande
+5 50 Healing

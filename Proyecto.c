@@ -3,25 +3,50 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 #include <time.h>
 
 typedef char StringLargo[100];
-typedef char StringCorto [20];
+typedef char StringCorto [30];
+
+enum {NMONSTRUOS = 10};
+enum {NOBJETOS = 10};
 
 typedef struct{
     StringCorto nombre;
-    int vida, ataque, defensa, exp, piso;
+    int vida, ataque, defensa, exp;
 }Jugador;
 
 typedef struct{
-    int piso_actual, sala_actual;
-}ubicacion;
+    int seed, piso, sala, cant_pisos, total_salas;
+}Ubicacion;
 
-void cargar_config(); // En desarrollo
+typedef struct {
+    StringCorto name;
+    int id, hp, atk, def, rarity;
+}Entity; // En desarrollo
 
-void cargar_bestiario(); // En desarrollo
+typedef struct{
+    StringCorto name, effect;
+    int id, value;
+}Item;
 
-void cargar_objeto(); // En desarrollo
+typedef Item Items [NOBJETOS];
+
+typedef Entity Entities [NMONSTRUOS];
+
+typedef struct{
+    Jugador player;
+    Ubicacion ubi;
+    Entities bestiary;
+    Items objetos;
+}Gamestate;
+
+Gamestate cargar_config(); 
+
+void cargar_bestiario(); 
+
+void cargar_objeto();
 
 void menu();
 
@@ -31,7 +56,11 @@ void menu_fueradecombate();
 
 void seed(int semilla);
 
-void insertar_nombre (Jugador *x);
+Gamestate insertar_nombre (Gamestate state);
+
+void avanzarSala (Gamestate state, Entities bestiario){
+
+} // En desarrollo
 
 /*
 
@@ -61,81 +90,163 @@ void registrar_highscore(EstadoJuego estado, bool victoria);
 
 int main(){
 
-    int op, seed_final;
-    StringLargo semilla;
+    Gamestate state;
+    int op;
+    StringLargo s;
     FILE *guardado,*highscore;
-    Jugador x;
+    
+    bool inmenu = true;
+
+    cargar_bestiario(state.bestiary);
+    cargar_objeto(state.objetos);
+
+    /* Revisión de Bestiario (Para pruebas)
+    for(int i; i < 10; i++){
+        printf("%s %d %d %d %d %d\n",
+        state.bestiary[i].name,
+        state.bestiary[i].id,
+        state.bestiary[i].hp,
+        state.bestiary[i].def,
+        state.bestiary[i].atk,
+        state.bestiary[i].rarity);
+    }*/
+
+    /* Revisión de Objetos (Para pruebas)
+    for(int i = 0; i < 5; i++){
+        printf("%s %d %d %s\n",
+        state.objetos[i].name,
+        state.objetos[i].id,
+        state.objetos[i].value,
+        state.objetos[i].effect);
+    }*/
 
     menu();
-    guardado = fopen("partida_guardada.txt", "r");
     scanf("%d", &op);
+    
+    while(inmenu == true){
+        switch(op)
+        {
+            case 1:
+                inmenu = false;
+                state = cargar_config(state); // Se carga toda la configuración 
 
-    switch(op)
-    {
-        case 1:
+                srand(state.ubi.seed); // Empieza la aleatorización por semilla
+                
+                state = insertar_nombre(state); // El usuario ingresa su nombre
+                
+                /* Verificación de estadisticas (Para pruebas)
+                printf("Datos\nNombre: %s\nVida: %d\nAtaque: %d\nDefensa: %d\nExperiencia: %d\nPiso: %d\nSala: %d\n",
+                state.player.nombre,state.player.vida,state.player.ataque,state.player.defensa,
+                state.player.exp,state.ubi.piso,state.ubi.sala); */
+                
+                printf("Una vez en la mazmorra notas algo moviendose en la oscuridad...");
+                printf("Piensas en volver, más tu cometido no te permite retroceder.");
 
-            int c;
-            while ((c = getchar()) != '\n' && c != EOF);
 
-            srand(time(NULL));
-            printf("Ingrese una semilla (Enter para generar una aleatoria)\n");
-            fgets(semilla, sizeof(semilla), stdin);
-            semilla[strcspn(semilla, "\n")] = '\0';
 
-            if (strlen(semilla) == 0) {
-                seed_final = rand() % 10000 + 1;
-                printf("\nNo ingresaste ninguna seed. Se genero una automatica: %u\n", seed_final);
-            } else {
-                seed_final = (unsigned int)atoi(semilla);        
-                printf("\nSe utilizara la seed ingresada: %u\n", seed_final);
-            }
 
-            seed(seed_final);
-            insertar_nombre(&x);
-            x.vida = 100, x.ataque = 5, x.defensa = 5, x.exp = 0, x.piso = 1;
-            printf("Perfil:\nNombre: %s\nVida: %d\nAtaque: %d\nDefensa: %d\nExperiencia: %d\nPiso: %d\n", x.nombre, x.vida, x.ataque, x.defensa, x.exp, x.piso);
 
-        break;
 
-        case 2:
-            if (guardado == NULL){
+            break;
+
+            case 2:
+                
                 printf("No hay archivos para cargar.\n");
-            } else {
+                
+            break;
 
-            }
-        break;
+            case 3:
+                    printf("No hay puntuaciones por mostrar.\n");
+            break;
 
-        case 3:
-            if (highscore == NULL){
-                printf("No hay puntuaciones por mostrar.\n");
-            } else {
+            case 4:
+                inmenu = false;
+            break;
 
-            }
-        break;
+            default:
+                printf("ERROR! Opcion no valida.\n");
+            break;
 
-        case 4:
-            
-        break;
+        }
 
-        default:
-            printf("ERROR! Opcion no valida.\n");
-        break;
+        if(inmenu == true){
+            printf("Seleccione otra opción.");
+            scanf("%d", &op);
+        }
 
     }
 
 return 0;
 }
 
-void cargar_config(){
+Gamestate cargar_config(Gamestate state){ // Cargado de la configuración general de juego
+    FILE *config;
 
+    config = fopen("config.txt", "r");
+
+    if (config == NULL){
+        printf("ERROR. No se pudo abrir config.txt");
+        return state;
+    }
+
+    fscanf(config, "%d %d %d",&state.ubi.seed,&state.ubi.cant_pisos,&state.ubi.total_salas); 
+    fscanf(config, "%d %d %d %d %d %d",&state.player.vida,&state.player.ataque,&state.player.defensa,
+        &state.player.exp,&state.ubi.piso,&state.ubi.sala);
+    fclose(config);
+    return state;
 }
 
-void cargar_bestiario(){
+void cargar_bestiario(Entities bestiary){ // Cargado de los Monstruos
+    FILE *bestiario;
 
-}
-
-void cargar_objeto(){
+    bestiario = fopen("bestiary.txt", "r");
     
+    if (bestiario == NULL){
+        printf("ERROR. No se pudo abrir bestiary.txt");
+        return;
+    }
+
+    for (int i = 0; i < 10; i++){
+        char linea[100];
+        fgets(bestiary[i].name, sizeof bestiary[i].name, bestiario);
+        bestiary[i].name[strcspn(bestiary[i].name, "\r\n")] = '\0';
+
+        fgets(linea, sizeof linea, bestiario);
+        sscanf(linea, "%d %d %d %d %d",
+        &bestiary[i].id,
+        &bestiary[i].hp,
+        &bestiary[i].atk,
+        &bestiary[i].def,
+        &bestiary[i].rarity);
+    }
+    
+    fclose(bestiario);
+}
+
+void cargar_objeto(Items objetos){ // Cargado de los Objetos
+    FILE *lista_objetos;
+
+    lista_objetos = fopen("items.txt", "r");
+    
+    if (lista_objetos == NULL){
+        printf("ERROR. No se pudo abrir items.txt");
+        return;
+    }
+
+    for (int i = 0; i < 5; i++){
+        char linea[100];
+        fgets(objetos[i].name, sizeof objetos[i].name, lista_objetos);
+        objetos[i].name[strcspn(objetos[i].name, "\r\n")] = '\0';
+             
+        fgets(linea, sizeof linea, lista_objetos);
+        sscanf(linea, "%d %d %19s",
+        &objetos[i].id,
+        &objetos[i].value,
+        objetos[i].effect);
+                
+    }
+    
+    fclose(lista_objetos);
 }
 
 void menu(){
@@ -163,23 +274,13 @@ void menu_combate(){
     printf("<===========================================>\n");
 }
 
-void insertar_nombre(Jugador *x) {
+Gamestate insertar_nombre(Gamestate state) { // Nombre del jugador
     int d;
     while ((d = getchar()) != '\n' && d != EOF);
     
     printf("Ingrese el nombre del jugador\n");
 
-    fgets(x->nombre, sizeof(x->nombre), stdin);
-    x->nombre[strcspn(x->nombre, "\n")] = '\0';
-}
-
-void seed(int seed_final){
-    int seed1, i;
-    seed1 = seed_final;
-    printf("Ejemplo de seed: %d\n", seed1);
-    srand(seed1);
-    for (i = 0; i < 5; i++) {
-        printf("%d ", rand() % 100 + 1);
-    }
-    printf("\n\n");
+    fgets(state.player.nombre, sizeof(state.player.nombre), stdin);
+    state.player.nombre[strcspn(state.player.nombre, "\n")] = '\0';
+    return state;
 }
