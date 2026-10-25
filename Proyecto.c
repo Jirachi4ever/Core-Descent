@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-#include <time.h>
 
 typedef char StringLargo[100];
 typedef char StringCorto [30];
@@ -38,7 +37,7 @@ typedef Entity Entities [NMONSTRUOS];
 typedef struct{
     Jugador player;
     Ubicacion ubi;
-    Entities bestiary;
+    Entities bestiary, oponente;
     Items objetos;
 }Gamestate;
 
@@ -58,19 +57,21 @@ void seed(int semilla);
 
 Gamestate insertar_nombre (Gamestate state);
 
-void avanzarSala (Gamestate state, Entities bestiario){
+Gamestate SeleccionarEnemigo(Gamestate state);
 
-} // En desarrollo
+Gamestate avanzarSala (Gamestate state);
+
+void iniciarCombate(Gamestate state); // En desarrollo
+
+int calcularDaño(int ataque_atacante, int defensa_defensor); // En desarrollo
+
+void otorgarRecompensa(Gamestate state, Items objetos, int total_objetos, Entities oponente); // En desarrollo
+
+void verificarSubidaNivel(Gamestate state); // En desarrollo
 
 /*
 
 Modulos por configurar y concretar
-
-Módulo 2:
-void avanzarCuarto (EstadoJuego *estado, Entidad bestiario[], 
-int total_enemigos, Objeto catalogo[], int total_objetos);
-Entidad SeleccionarEnemigo(Entidad bestiario[], int total_enemigos, 
-int es_cuarto_final);
 
 Módulo 3:
 void iniciarCombate(Estadojuego *estado, Entidad *enemigo);
@@ -93,7 +94,6 @@ int main(){
     Gamestate state;
     int op;
     StringLargo s;
-    FILE *guardado,*highscore;
     
     bool inmenu = true;
 
@@ -134,18 +134,18 @@ int main(){
                 
                 state = insertar_nombre(state); // El usuario ingresa su nombre
                 
-                /* Verificación de estadisticas (Para pruebas)
-                printf("Datos\nNombre: %s\nVida: %d\nAtaque: %d\nDefensa: %d\nExperiencia: %d\nPiso: %d\nSala: %d\n",
+                //Verificación de estadisticas (Para pruebas)
+                /*printf("Datos\nNombre: %s\nVida: %d\nAtaque: %d\nDefensa: %d\nExperiencia: %d\nPiso: %d\nSala: %d\n",
                 state.player.nombre,state.player.vida,state.player.ataque,state.player.defensa,
-                state.player.exp,state.ubi.piso,state.ubi.sala); */
+                state.player.exp,state.ubi.piso,state.ubi.sala);*/ 
                 
-                printf("Una vez en la mazmorra notas algo moviendose en la oscuridad...");
-                printf("Piensas en volver, más tu cometido no te permite retroceder.");
+                printf("Una vez en la mazmorra notas algo moviendose en la oscuridad...\n");
+                printf("Piensas en volver, más tu cometido no te permite retroceder.\n");
 
+                state = avanzarSala(state);
+                state = SeleccionarEnemigo(state);
 
-
-
-
+                printf("¡%s ha aparecido!\n", state.oponente[0].name);
 
             break;
 
@@ -189,6 +189,7 @@ Gamestate cargar_config(Gamestate state){ // Cargado de la configuración genera
         return state;
     }
 
+    //Cargado de datos, Semilla, Cantidad de Pisos, Total de Salas, Stats y "ubicación" del jugador
     fscanf(config, "%d %d %d",&state.ubi.seed,&state.ubi.cant_pisos,&state.ubi.total_salas); 
     fscanf(config, "%d %d %d %d %d %d",&state.player.vida,&state.player.ataque,&state.player.defensa,
         &state.player.exp,&state.ubi.piso,&state.ubi.sala);
@@ -249,6 +250,50 @@ void cargar_objeto(Items objetos){ // Cargado de los Objetos
     fclose(lista_objetos);
 }
 
+Gamestate SeleccionarEnemigo(Gamestate state){
+    Entities enemigo_posible;
+    int cantidad_posible = 0, id_random;
+    state.ubi.sala = 1;
+
+    if(state.ubi.sala == 4){
+        for (int i = 0; i < 10; i++){
+            if(state.bestiary[i].rarity == 3){ // Sólo si la rareza del monstruo es 3 (Épico)
+                enemigo_posible[cantidad_posible] = state.bestiary[i];
+                cantidad_posible++;
+            }
+        }
+    }
+
+    if(state.ubi.sala == 3){
+        for (int i = 0; i < 10; i++){
+            if(state.bestiary[i].rarity == 2){ // Sólo si la rareza del monstruo es 2 (Raro)
+                enemigo_posible[cantidad_posible] = state.bestiary[i];
+                cantidad_posible++;
+            }
+        }
+    } else if(state.ubi.sala < 3){
+
+        for (int i = 0; i < 10; i++){
+            if(state.bestiary[i].rarity == 1){ // Sólo si la rareza del monstruo es 1 (Común)
+                enemigo_posible[cantidad_posible] = state.bestiary[i];
+                cantidad_posible++;
+            }
+        }
+    }
+
+    if (cantidad_posible > 0) {
+        int indice_random = rand() % cantidad_posible;
+        state.oponente[0] = enemigo_posible[indice_random];
+    }
+return state;
+}
+
+Gamestate avanzarSala (Gamestate state){
+    state.ubi.sala = state.ubi.sala + 1;
+
+    return state;
+}
+
 void menu(){
     printf("<===========================================>\n");
     printf("[1] - Iniciar nuevo juego\n");
@@ -267,11 +312,29 @@ void menu_fueradecombate(){
 }
 
 void menu_combate(){
+
+    
     printf("<===========================================>\n");
     printf("[1] - Atacar\n");
     printf("[2] - Mochila\n");
     printf("[3] - Huir\n");
     printf("<===========================================>\n");
+}
+
+void iniciarCombate(Gamestate state){
+
+}
+
+int calcularDaño(int ataque_atacante, int defensa_defensor){ // En desarrollo
+
+}
+
+void otorgarRecompensa(Gamestate state, Items objetos, int total_objetos, Entities oponente){
+
+}
+
+void verificarSubidaNivel(Gamestate state){
+    
 }
 
 Gamestate insertar_nombre(Gamestate state) { // Nombre del jugador
