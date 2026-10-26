@@ -17,7 +17,7 @@ typedef struct{
 }Jugador;
 
 typedef struct{
-    int seed, piso, sala, cant_pisos, total_salas;
+    int seed, piso, sala, cant_pisos, total_salas, promedio_salas;
 }Ubicacion;
 
 typedef struct {
@@ -73,7 +73,7 @@ void verificarSubidaNivel(Gamestate state); // En desarrollo
 
 Modulos por configurar y concretar
 
-Módulo 3:
+Módulo 3 (Actualmente en desarrollo):
 void iniciarCombate(Estadojuego *estado, Entidad *enemigo);
 int calcularDaño(int ataque_atacante, int defensa_defensor);
 void otorgarRecompensa(EstadoJuego *estado, Objeto catalogo[],
@@ -101,7 +101,7 @@ int main(){
     cargar_objeto(state.objetos);
 
     /* Revisión de Bestiario (Para pruebas)
-    for(int i; i < 10; i++){
+    for(int i; i < NMONSTRUOS; i++){
         printf("%s %d %d %d %d %d\n",
         state.bestiary[i].name,
         state.bestiary[i].id,
@@ -112,7 +112,7 @@ int main(){
     }*/
 
     /* Revisión de Objetos (Para pruebas)
-    for(int i = 0; i < 5; i++){
+    for(int i = 0; i < NOBJETOS; i++){
         printf("%s %d %d %s\n",
         state.objetos[i].name,
         state.objetos[i].id,
@@ -120,9 +120,11 @@ int main(){
         state.objetos[i].effect);
     }*/
 
-    menu();
+    //menu();
     scanf("%d", &op);
-    
+    state = SeleccionarEnemigo(state);
+    printf("%d\n", state.ubi.promedio_salas);
+
     while(inmenu == true){
         switch(op)
         {
@@ -207,8 +209,8 @@ void cargar_bestiario(Entities bestiary){ // Cargado de los Monstruos
         return;
     }
 
-    for (int i = 0; i < 10; i++){
-        char linea[100];
+    for (int i = 0; i < NMONSTRUOS; i++){
+        StringLargo linea;
         fgets(bestiary[i].name, sizeof bestiary[i].name, bestiario);
         bestiary[i].name[strcspn(bestiary[i].name, "\r\n")] = '\0';
 
@@ -234,8 +236,8 @@ void cargar_objeto(Items objetos){ // Cargado de los Objetos
         return;
     }
 
-    for (int i = 0; i < 5; i++){
-        char linea[100];
+    for (int i = 0; i < NOBJETOS; i++){
+        StringLargo linea;
         fgets(objetos[i].name, sizeof objetos[i].name, lista_objetos);
         objetos[i].name[strcspn(objetos[i].name, "\r\n")] = '\0';
              
@@ -253,10 +255,10 @@ void cargar_objeto(Items objetos){ // Cargado de los Objetos
 Gamestate SeleccionarEnemigo(Gamestate state){
     Entities enemigo_posible;
     int cantidad_posible = 0, id_random;
-    state.ubi.sala = 1;
+    state.ubi.promedio_salas = state.ubi.total_salas % state.ubi.cant_pisos; // por fixear
 
     if(state.ubi.sala == 4){
-        for (int i = 0; i < 10; i++){
+        for (int i = 0; i < NMONSTRUOS; i++){
             if(state.bestiary[i].rarity == 3){ // Sólo si la rareza del monstruo es 3 (Épico)
                 enemigo_posible[cantidad_posible] = state.bestiary[i];
                 cantidad_posible++;
@@ -265,7 +267,7 @@ Gamestate SeleccionarEnemigo(Gamestate state){
     }
 
     if(state.ubi.sala == 3){
-        for (int i = 0; i < 10; i++){
+        for (int i = 0; i < NMONSTRUOS; i++){
             if(state.bestiary[i].rarity == 2){ // Sólo si la rareza del monstruo es 2 (Raro)
                 enemigo_posible[cantidad_posible] = state.bestiary[i];
                 cantidad_posible++;
@@ -273,7 +275,7 @@ Gamestate SeleccionarEnemigo(Gamestate state){
         }
     } else if(state.ubi.sala < 3){
 
-        for (int i = 0; i < 10; i++){
+        for (int i = 0; i < NMONSTRUOS; i++){
             if(state.bestiary[i].rarity == 1){ // Sólo si la rareza del monstruo es 1 (Común)
                 enemigo_posible[cantidad_posible] = state.bestiary[i];
                 cantidad_posible++;
