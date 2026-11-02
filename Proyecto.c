@@ -3,7 +3,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <stdbool.h>
+#include <math.h>
 
 typedef char StringLargo[100];
 typedef char StringCorto [30];
@@ -17,20 +19,21 @@ typedef struct{
 }Jugador;
 
 typedef struct{
-    int seed, piso, sala, cant_pisos, total_salas, promedio_salas;
+    int seed, piso, sala, cant_pisos, total_salas;
+    float prom_sala;
 }Ubicacion;
 
 typedef struct {
     StringCorto name;
     int id, hp, atk, def, rarity;
-}Entity; // En desarrollo
+}Entity;
 
 typedef struct{
     StringCorto name, effect;
     int id, value;
-}Item;
+}Items;
 
-typedef Item Items [NOBJETOS];
+typedef Items Catalogo [NOBJETOS];
 
 typedef Entity Entities [NMONSTRUOS];
 
@@ -38,7 +41,7 @@ typedef struct{
     Jugador player;
     Ubicacion ubi;
     Entities bestiary, oponente;
-    Items objetos;
+    Catalogo objetos, inv;
 }Gamestate;
 
 Gamestate cargar_config(); 
@@ -53,6 +56,8 @@ void menu_combate();
 
 void menu_fueradecombate();
 
+void menu_inventario(Gamestate state);
+
 void seed(int semilla);
 
 Gamestate insertar_nombre (Gamestate state);
@@ -61,11 +66,11 @@ Gamestate SeleccionarEnemigo(Gamestate state);
 
 Gamestate avanzarSala (Gamestate state);
 
-void iniciarCombate(Gamestate state); // En desarrollo
+void iniciarCombate(Gamestate state, bool incombat);
 
-int calcularDaño(int ataque_atacante, int defensa_defensor); // En desarrollo
+int calcularDaño(int ataque_atacante, int defensa_defensor); // Falta Critico
 
-void otorgarRecompensa(Gamestate state, Items objetos, int total_objetos, Entities oponente); // En desarrollo
+Gamestate otorgarRecompensa(Gamestate state, Catalogo objetos, Entities oponente, int total_inv); // En desarrollo
 
 void verificarSubidaNivel(Gamestate state); // En desarrollo
 
@@ -74,11 +79,11 @@ void verificarSubidaNivel(Gamestate state); // En desarrollo
 Modulos por configurar y concretar
 
 Módulo 3 (Actualmente en desarrollo):
-void iniciarCombate(Estadojuego *estado, Entidad *enemigo);
-int calcularDaño(int ataque_atacante, int defensa_defensor);
-void otorgarRecompensa(EstadoJuego *estado, Objeto catalogo[],
-int total_objetos, char tipo_enemigo[]);
-void verificarSubidaNivel(EstadoJuego *estado);
+void iniciarCombate(Estadojuego *estado, Entidad *enemigo); // Completo
+int calcularDaño(int ataque_atacante, int defensa_defensor); // Completo
+void otorgarRecompensa(EstadoJuego *estado, Objeto catalogo[], 
+int total_objetos, char tipo_enemigo[]); // Completo
+void verificarSubidaNivel(EstadoJuego *estado); // En desarrollo
 
 Módulo 4:
 void usar_objeto(EstadoJuego *estado);
@@ -91,11 +96,10 @@ void registrar_highscore(EstadoJuego estado, bool victoria);
 
 int main(){
 
-    Gamestate state;
+    Gamestate state = {0};
     int op;
     StringLargo s;
-    
-    bool inmenu = true;
+    bool inmenu = true, incombat = false;
 
     cargar_bestiario(state.bestiary);
     cargar_objeto(state.objetos);
@@ -119,35 +123,36 @@ int main(){
         state.objetos[i].value,
         state.objetos[i].effect);
     }*/
-
-    //menu();
+    menu();
     scanf("%d", &op);
-    state = SeleccionarEnemigo(state);
-    printf("%d\n", state.ubi.promedio_salas);
 
-    while(inmenu == true){
+
+    while(inmenu){
         switch(op)
         {
             case 1:
                 inmenu = false;
-                state = cargar_config(state); // Se carga toda la configuración 
+                state = cargar_config(state); // Se carga toda la configuración
 
                 srand(state.ubi.seed); // Empieza la aleatorización por semilla
                 
                 state = insertar_nombre(state); // El usuario ingresa su nombre
                 
                 //Verificación de estadisticas (Para pruebas)
-                /*printf("Datos\nNombre: %s\nVida: %d\nAtaque: %d\nDefensa: %d\nExperiencia: %d\nPiso: %d\nSala: %d\n",
+                printf("Datos\nNombre: %s\nVida: %d\nAtaque: %d\nDefensa: %d\nExperiencia: %d\nPiso: %d\nSala: %d\n",
                 state.player.nombre,state.player.vida,state.player.ataque,state.player.defensa,
-                state.player.exp,state.ubi.piso,state.ubi.sala);*/ 
+                state.player.exp,state.ubi.piso,state.ubi.sala);
                 
                 printf("Una vez en la mazmorra notas algo moviendose en la oscuridad...\n");
                 printf("Piensas en volver, más tu cometido no te permite retroceder.\n");
 
                 state = avanzarSala(state);
+
                 state = SeleccionarEnemigo(state);
 
                 printf("¡%s ha aparecido!\n", state.oponente[0].name);
+
+                iniciarCombate(state,incombat);
 
             break;
 
@@ -226,7 +231,7 @@ void cargar_bestiario(Entities bestiary){ // Cargado de los Monstruos
     fclose(bestiario);
 }
 
-void cargar_objeto(Items objetos){ // Cargado de los Objetos
+void cargar_objeto(Catalogo objetos){ // Cargado de los Objetos
     FILE *lista_objetos;
 
     lista_objetos = fopen("items.txt", "r");
@@ -255,9 +260,9 @@ void cargar_objeto(Items objetos){ // Cargado de los Objetos
 Gamestate SeleccionarEnemigo(Gamestate state){
     Entities enemigo_posible;
     int cantidad_posible = 0, id_random;
-    state.ubi.promedio_salas = state.ubi.total_salas % state.ubi.cant_pisos; // por fixear
+    state.ubi.prom_sala = state.ubi.total_salas / state.ubi.cant_pisos;
 
-    if(state.ubi.sala == 4){
+    if(state.ubi.sala == state.ubi.prom_sala + 1){
         for (int i = 0; i < NMONSTRUOS; i++){
             if(state.bestiary[i].rarity == 3){ // Sólo si la rareza del monstruo es 3 (Épico)
                 enemigo_posible[cantidad_posible] = state.bestiary[i];
@@ -266,14 +271,14 @@ Gamestate SeleccionarEnemigo(Gamestate state){
         }
     }
 
-    if(state.ubi.sala == 3){
+    if(state.ubi.sala == state.ubi.prom_sala){
         for (int i = 0; i < NMONSTRUOS; i++){
             if(state.bestiary[i].rarity == 2){ // Sólo si la rareza del monstruo es 2 (Raro)
                 enemigo_posible[cantidad_posible] = state.bestiary[i];
                 cantidad_posible++;
             }
         }
-    } else if(state.ubi.sala < 3){
+    } else if(state.ubi.sala < state.ubi.prom_sala){
 
         for (int i = 0; i < NMONSTRUOS; i++){
             if(state.bestiary[i].rarity == 1){ // Sólo si la rareza del monstruo es 1 (Común)
@@ -291,7 +296,12 @@ return state;
 }
 
 Gamestate avanzarSala (Gamestate state){
-    state.ubi.sala = state.ubi.sala + 1;
+    if(state.ubi.sala == state.ubi.prom_sala){
+        state.ubi.piso = state.ubi.piso + 1;
+        state.ubi.sala = 0;
+    } else {
+        state.ubi.sala = state.ubi.sala + 1;
+    }
 
     return state;
 }
@@ -313,9 +323,11 @@ void menu_fueradecombate(){
     printf("<===========================================>\n");
 }
 
-void menu_combate(){
+void menu_combate(Gamestate state){
 
-    
+    printf("<===========================================>\n");
+    printf("%s: %d HP    %s: %d HP\n",state.player.nombre,state.player.vida
+    ,state.oponente[0].name,state.oponente[0].hp);
     printf("<===========================================>\n");
     printf("[1] - Atacar\n");
     printf("[2] - Mochila\n");
@@ -323,16 +335,133 @@ void menu_combate(){
     printf("<===========================================>\n");
 }
 
-void iniciarCombate(Gamestate state){
+void menu_inventario(Gamestate state){
+
+    for (int k = 0; k < 3; k++){
+        if(state.inv[k].name[0] == '\0'){
+            strcpy(state.inv[k].name, "Vacio");
+        }
+    }
+
+    printf("<===========================================>\n");
+    printf("[1] - %s\n", state.inv[0].name);
+    printf("[2] - %s\n", state.inv[1].name);
+    printf("[3] - %s\n", state.inv[2].name);
+    printf("[4] - Salir\n");
+    printf("<===========================================>\n");
 
 }
 
-int calcularDaño(int ataque_atacante, int defensa_defensor){ // En desarrollo
+void iniciarCombate(Gamestate state, bool incombat){ // En desarrollo
+    incombat = true;
+    int op2, atk_atacante, def_defensor, daño_infligido, total_inv = 3;
+
+    menu_combate(state);
+    scanf("%d", &op2);
+
+    while (incombat){
+        
+        switch (op2)
+
+        {
+        case 1:
+
+            atk_atacante = state.player.ataque, def_defensor = state.oponente[0].def;
+            daño_infligido = calcularDaño(atk_atacante, def_defensor);
+            state.oponente[0].hp = state.oponente[0].hp - daño_infligido;
+
+            printf("¡Has infligido %d puntos de daño!\n", daño_infligido);
+
+            atk_atacante = state.oponente[0].atk, def_defensor = state.player.defensa;
+            daño_infligido = calcularDaño(atk_atacante, def_defensor);
+            state.player.vida = state.player.vida - daño_infligido;
+
+            printf("¡Has recibido %d puntos de daño!\n", daño_infligido);
+
+            break;
+
+        case 2:
+
+            menu_inventario(state);
+
+        break;
+
+        case 3:
+
+        break;
+        
+        default:
+            break;
+        }
+
+        if(state.player.vida == 0 || state.oponente[0].hp == 0){
+            incombat = false;
+
+            if(state.player.vida == 0){printf("Has sido derrotado...\n");}
+            if(state.oponente[0].hp == 0){printf("¡Has salido victorioso!\n");}
+
+            break;
+        }
+
+    menu_combate(state);
+    scanf("%d", &op2);
+    }
 
 }
 
-void otorgarRecompensa(Gamestate state, Items objetos, int total_objetos, Entities oponente){
+int calcularDaño(int atk_atacante, int def_defensor){ // Probabilidad de critico por añadir (En desarrollo)
+    int damage, defensa_real = (def_defensor > 1) ? def_defensor : 1;
+    int base_dmg = 5;
 
+    damage = (base_dmg * (atk_atacante/defensa_real));
+
+    if (damage <= 0){
+        damage = 1;
+    }
+
+    if ((rand() % 16) == 5){
+        damage = damage * 2;
+    }
+
+    return damage;
+}
+
+Gamestate otorgarRecompensa(Gamestate state, Catalogo objetos, Entities oponente, int total_inv){
+
+    bool recompensado = false;
+    int id_random;
+
+    if(state.oponente[0].rarity == 2){
+        for(int l = 0; l < total_inv; l++){
+            if (state.inv[l].id == '\0' && !recompensado){
+                id_random = rand() % NOBJETOS;
+                for (int m = 0; m < NOBJETOS; m++){
+                    if(id_random == state.objetos[m].id){
+                        state.inv[l] = state.objetos[m];
+                    }
+                }
+                recompensado = true;    
+            }
+        }
+    }
+
+    if(state.oponente[0].rarity == 1){
+        id_random = (rand() % 100) + 1;
+        if(id_random <= 25){
+            for(int l = 0; l < 3; l++){
+                if (state.inv[l].id == '\0' && !recompensado){
+                    id_random = rand() % NOBJETOS;
+                    for (int m = 0; m < NOBJETOS; m++){
+                        if(id_random == state.objetos[m].id){
+                            state.inv[l] = state.objetos[m];
+                        }
+                    }
+                    recompensado = true;    
+                }
+            }
+        }
+    }
+    
 }
 
 void verificarSubidaNivel(Gamestate state){
@@ -341,11 +470,24 @@ void verificarSubidaNivel(Gamestate state){
 
 Gamestate insertar_nombre(Gamestate state) { // Nombre del jugador
     int d;
+    bool solo_espacios = true;
     while ((d = getchar()) != '\n' && d != EOF);
-    
+   
     printf("Ingrese el nombre del jugador\n");
 
     fgets(state.player.nombre, sizeof(state.player.nombre), stdin);
     state.player.nombre[strcspn(state.player.nombre, "\n")] = '\0';
+
+    for (int i = 0; state.player.nombre[i] != '\0'; i++) {
+        if (!isspace((unsigned char)state.player.nombre[i])) {
+            solo_espacios = false;
+            break;
+        }
+    }
+
+    if (solo_espacios) {
+        strcpy(state.player.nombre, "Sin nombre");
+    }
+
     return state;
 }

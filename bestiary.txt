@@ -3,7 +3,7 @@ Goblin
 Rata Gigante
 2 20 10 5 1
 Golem de Barro
-3 50 5 30 1
+3 50 10 15 1
 Elemental de Fuego
 4 20 15 10 1
 Goblin Arquero
