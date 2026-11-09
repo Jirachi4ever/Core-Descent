@@ -1,4 +1,4 @@
-/*Integrantes: Eydan Bastidas C.I: 31.677.825 */
+/* 11/09/2026 Integrantes: Eydan Bastidas C.I: 31.677.825-Victoria Torres C.I: 32.768.115 seccion: 2*/
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -74,6 +74,8 @@ Gamestate otorgarRecompensa(Gamestate state, Catalogo objetos, Entities oponente
 
 void verificarSubidaNivel(Gamestate state); // En desarrollo
 
+void guardar_partida(Gamestate estado); // faltan pruebas
+
 /*
 
 Modulos por configurar y concretar
@@ -130,7 +132,7 @@ int main(){
     while(inmenu){
         switch(op)
         {
-            case 1:
+            case 1:// nueva partida
                 inmenu = false;
                 state = cargar_config(state); // Se carga toda la configuración
 
@@ -156,17 +158,17 @@ int main(){
 
             break;
 
-            case 2:
+            case 2: //cargar partida
                 
-                printf("No hay archivos para cargar.\n");
+              guardar_partida(state);
                 
             break;
 
-            case 3:
+            case 3://highscore
                     printf("No hay puntuaciones por mostrar.\n");
             break;
 
-            case 4:
+            case 4://salir
                 inmenu = false;
             break;
 
@@ -490,4 +492,70 @@ Gamestate insertar_nombre(Gamestate state) { // Nombre del jugador
     }
 
     return state;
+}
+void guardar_partida(Gamestate estado){
+    FILE *salida;
+    int i;
+    int error;
+
+    archivo = fopen("partida_guardada.txt", "w");
+
+    if (salida == NULL) {
+         printf("ERROR. No se pudo abrir el archivo de guardado.\n");
+        return;
+    }
+
+    /* Guardar nombre y estadisticas del jugador */
+        fprintf(salida, "%s\n", estado.player.nombre);
+
+        fprintf(archivo,"%d %d %d %d\n", estado.player.vida, estado.player.ataque,
+            estado.player.defensa,estado.player.exp);
+
+    /* Guardar configuracion y ubicacion */
+        fprintf(salida,"%d %d %d %d %d %.9g\n",estado.ubi.seed, estado.ubi.piso,estado.ubi.sala,
+            estado.ubi.cant_pisos,estado.ubi.total_salas,estado.ubi.prom_sala);
+
+    /* Guardar el bestiario */
+        for (i = 0; i < NMONSTRUOS; i++) {
+            fprintf(salida, "%s\n", estado->bestiary[i].name);
+
+            fprintf(salida,"%d %d %d %d %d\n",estado.bestiary[i].id,estado.bestiary[i].hp,estado.bestiary[i].atk,
+                estado.bestiary[i].def,estado.bestiary[i].rarity);
+    }
+
+    /* Guardar el arreglo de oponentes */
+        for (i = 0; i < NMONSTRUOS; i++) {
+            fprintf(salida, "%s\n", estado->oponente[i].name);
+
+            fprintf(salida,"%d %d %d %d %d\n",estado.oponente[i].id,estado.oponente[i].hp,estado.oponente[i].atk,
+                estado.oponente[i].def,estado.oponente[i].rarity);
+    }
+
+    /* Guardar el catalogo de objetos */
+        for (i = 0; i < NOBJETOS; i++) {
+            fprintf(salida, "%s\n", estado.objetos[i].name);
+            fprintf(salida, "%s\n", estado.objetos[i].effect);
+            fprintf(salida,"%d %d\n",estado.objetos[i].id,estado.objetos[i].value);
+    }
+
+    /* Guardar todos los espacios del inventario */
+        for (i = 0; i < NOBJETOS; i++) {
+            fprintf(salida, "%s\n", estado.inv[i].name);
+            fprintf(salida, "%s\n", estado.inv[i].effect);
+            fprint(salida,"%d %d\n",estado.inv[i].id,estado.inv[i].value);
+    }
+    /* Revisar si alguna escritura fallo */
+        error = ferror(salida);
+
+    /* Cerrar siempre el archivo, incluso si hubo un error */
+        if (fclose(salida) != 0) {
+            error = 1;
+        }
+
+        if (error) {
+            printf("ERROR. No se pudo guardar toda la partida.\n");
+        } else {
+            printf("Partida guardada correctamente.\n");
+        }
+    }
 }
