@@ -76,6 +76,7 @@ void verificarSubidaNivel(Gamestate state); // En desarrollo
 
 void guardar_partida(Gamestate estado); // faltan pruebas
 
+int cargarPartida(Gamestate *state);
 /*
 
 Modulos por configurar y concretar
@@ -91,15 +92,15 @@ Módulo 4:
 void usar_objeto(EstadoJuego *estado);
 
 Módulo 5:
-void guardar_partida(EstadoJuego *estado);
-int cargar_partida(EstadoJuego *estado);
+void guardar_partida(EstadoJuego *estado); //desarrollo
+int cargar_partida(EstadoJuego *estado); 
 void registrar_highscore(EstadoJuego estado, bool victoria);
 */
 
 int main(){
 
     Gamestate state = {0};
-    int op;
+    int op, carga;
     StringLargo s;
     bool inmenu = true, incombat = false;
 
@@ -159,9 +160,12 @@ int main(){
             break;
 
             case 2: //cargar partida
-                
-              guardar_partida(state);
-                
+                carga = cargarPartida(&state);
+                if (cargada == 1) {
+                    printf("Continuando la partida...\n");
+                } else {
+                    printf("No se pudo cargar la partida.\n");
+                }
             break;
 
             case 3://highscore
@@ -401,7 +405,7 @@ void iniciarCombate(Gamestate state, bool incombat){ // En desarrollo
 
             if(state.player.vida == 0){printf("Has sido derrotado...\n");}
             if(state.oponente[0].hp == 0){printf("¡Has salido victorioso!\n");}
-
+            remove("partida_guardada.txt"); //elimina la partida guardada
             break;
         }
 
@@ -498,64 +502,149 @@ void guardar_partida(Gamestate estado){
     int i;
     int error;
 
-    archivo = fopen("partida_guardada.txt", "w");
+    salida = fopen("partida_guardada.txt", "w");
 
     if (salida == NULL) {
          printf("ERROR. No se pudo abrir el archivo de guardado.\n");
-        return;
-    }
 
-    /* Guardar nombre y estadisticas del jugador */
-        fprintf(salida, "%s\n", estado.player.nombre);
+    } else {
 
-        fprintf(archivo,"%d %d %d %d\n", estado.player.vida, estado.player.ataque,
-            estado.player.defensa,estado.player.exp);
+        /* Atributos: vida, ataque y defensa*/
+        fprintf(salida,"%d %d %d\n",estado.player.vida,estado.player.ataque,estado.player.defensa);
 
-    /* Guardar configuracion y ubicacion */
-        fprintf(salida,"%d %d %d %d %d %.9g\n",estado.ubi.seed, estado.ubi.piso,estado.ubi.sala,
-            estado.ubi.cant_pisos,estado.ubi.total_salas,estado.ubi.prom_sala);
+        /* Nivel actual y experiencia*/
+        fprintf(salida,"%d %d\n",estado.player.exp);
 
-    /* Guardar el bestiario */
-        for (i = 0; i < NMONSTRUOS; i++) {
-            fprintf(salida, "%s\n", estado->bestiary[i].name);
+        /* Ubicacion: piso y cuarto*/
+        fprintf(salida,"%d %d\n",estado.ubi.piso,estado.ubi.sala);
 
-            fprintf(salida,"%d %d %d %d %d\n",estado.bestiary[i].id,estado.bestiary[i].hp,estado.bestiary[i].atk,
-                estado.bestiary[i].def,estado.bestiary[i].rarity);
-    }
-
-    /* Guardar el arreglo de oponentes */
-        for (i = 0; i < NMONSTRUOS; i++) {
-            fprintf(salida, "%s\n", estado->oponente[i].name);
-
-            fprintf(salida,"%d %d %d %d %d\n",estado.oponente[i].id,estado.oponente[i].hp,estado.oponente[i].atk,
-                estado.oponente[i].def,estado.oponente[i].rarity);
-    }
-
-    /* Guardar el catalogo de objetos */
+        /* Inventario: guardar cada posicion del arreglo */
         for (i = 0; i < NOBJETOS; i++) {
-            fprintf(salida, "%s\n", estado.objetos[i].name);
-            fprintf(salida, "%s\n", estado.objetos[i].effect);
-            fprintf(salida,"%d %d\n",estado.objetos[i].id,estado.objetos[i].value);
-    }
+            fprintf(salida, "%s\n",estado.inv[i].name);
+            fprintf(salida, "%s\n",estado.inv[i].effect);
 
-    /* Guardar todos los espacios del inventario */
-        for (i = 0; i < NOBJETOS; i++) {
-            fprintf(salida, "%s\n", estado.inv[i].name);
-            fprintf(salida, "%s\n", estado.inv[i].effect);
-            fprint(salida,"%d %d\n",estado.inv[i].id,estado.inv[i].value);
-    }
-    /* Revisar si alguna escritura fallo */
+            fprintf(salida,"%d %d\n",estado.inv[i].id,estado.inv[i].value);
+        }
+
         error = ferror(salida);
 
-    /* Cerrar siempre el archivo, incluso si hubo un error */
         if (fclose(salida) != 0) {
             error = 1;
         }
 
-        if (error) {
-            printf("ERROR. No se pudo guardar toda la partida.\n");
-        } else {
+        if (error == 0) {
             printf("Partida guardada correctamente.\n");
+        } else {
+            printf("ERROR. No se pudo guardar toda la partida.\n");
         }
     }
+
+}
+
+int cargarPartida(Gamestate *state)
+{
+    FILE *archivo;
+    Gamestate temporal;
+    StringLargo linea;
+    StringLargo nombre;
+    StringLargo efecto;
+    int correcto;
+    int cargada;
+    int i;
+
+    cargada = 0;
+
+    archivo = fopen("partida_guardada.txt", "r");
+
+    if (archivo == NULL) {
+        printf("No hay partida guardada o no se pudo abrir.\n");
+    } else {
+        temporal = *state;
+        correcto = 1;
+
+        /* Leer vida, ataque y defensa. */
+        if (fgets(linea, sizeof linea, archivo) != NULL) { //guarda texto en linea
+            if (sscanf(linea,"%d %d %d",&temporal.player.vida,&temporal.player.ataque,
+                &temporal.player.defensa) != 3){ //guarda el texo en la variable corresponiente 
+                correcto = 0; //confirmacion de que contiene los elementos esperados
+            }
+        } else {
+            correcto = 0; // no tiene los elementos esperados
+        }
+
+        /* Leer experiencia */
+        if (correcto == 1) {
+            if (fgets(linea, sizeof linea, archivo) != NULL) { 
+                if (sscanf(linea,"%d",&temporal.player.exp) != 1) {
+                    correcto = 0;
+                }
+            } else {
+                correcto = 0;
+            }
+        }
+        /* Leer piso y cuarto. */
+        if (correcto == 1) {
+            if (fgets(linea, sizeof linea, archivo) != NULL) {
+                if (sscanf(linea,"%d %d",&temporal.ubi.piso,&temporal.ubi.sala) != 2) {
+                    correcto = 0;
+                }
+            } else {
+                correcto = 0;
+            }
+        }
+
+        /* Leer cada posicion del inventario. */
+        for (i = 0; i < NOBJETOS && correcto == 1; i++) {
+
+            if (fgets(nombre, sizeof nombre, archivo) != NULL &&
+                fgets(efecto, sizeof efecto, archivo) != NULL &&
+                fgets(linea, sizeof linea, archivo) != NULL) {
+
+                nombre[strcspn(nombre, "\r\n")] = '\0';
+                efecto[strcspn(efecto, "\r\n")] = '\0';
+
+                if (strlen(nombre) < sizeof temporal.inv[i].name &&
+                    strlen(efecto) < sizeof temporal.inv[i].effect) {
+
+                    strcpy(temporal.inv[i].name, nombre);
+                    strcpy(temporal.inv[i].effect, efecto);
+
+                    if (sscanf(linea,"%d %d",&temporal.inv[i].id,&temporal.inv[i].value) != 2) {
+                        correcto = 0;
+                    }
+                } else {
+                    correcto = 0;
+                }
+            } else {
+                correcto = 0;
+            }
+        }
+
+        /* Validaciones basicas. */
+        if (correcto == 1) {
+            if (temporal.player.vida <= 0 ||
+                temporal.player.ataque < 0 ||
+                temporal.player.defensa < 0 ||
+                temporal.player.exp < 0 ||
+                temporal.ubi.piso < 1 ||
+                temporal.ubi.piso > temporal.ubi.cant_pisos ||
+                temporal.ubi.sala < 0) {
+
+                correcto = 0;
+            }
+        }
+
+        fclose(archivo);
+
+        if (correcto == 1) {
+            *state = temporal;
+            cargada = 1;
+
+            printf("Partida cargada correctamente.\n");
+        } else {
+            printf("El archivo esta incompleto o contiene datos invalidos.\n");
+        }
+    }
+
+    return cargada;
 }
