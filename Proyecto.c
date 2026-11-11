@@ -104,9 +104,9 @@ Módulo 4:
 void usar_objeto(EstadoJuego *estado);
 
 Módulo 5:
-void guardar_partida(EstadoJuego *estado); //desarrollo
-int cargar_partida(EstadoJuego *estado); 
-void registrar_highscore(EstadoJuego estado, bool victoria);
+void guardar_partida(EstadoJuego *estado); //pruebas
+int cargar_partida(EstadoJuego *estado); //pruebas
+void registrar_highscore(EstadoJuego estado, bool victoria);//desarrollo
 */
 
 int main(){
@@ -181,7 +181,7 @@ int main(){
             break;
 
             case 3://highscore
-                    printf("No hay puntuaciones por mostrar.\n");
+                    mostrar_highscores();
             break;
 
             case 4://salir
@@ -693,20 +693,8 @@ void mostrar_highscores(void) {
             if (correcto == 1) {
                 if (fgets(linea, sizeof(linea), archivo) != NULL) {
                     if (
-                        sscanf(
-                            linea,
-                            "%d %d %d %d %d %d %d %d %d",
-                            &actual.piso,
-                            &actual.cuartos,
-                            &actual.enemigos,
-                            &actual.objetos,
-                            &actual.vida,
-                            &actual.ataque,
-                            &actual.defensa,
-                            &actual.nivel,
-                            &actual.exp
-                        ) != 9
-                    ) {
+                        sscanf(linea,"%d %d %d %d %d %d %d %d %d",&actual.piso,&actual.cuartos,&actual.enemigos,&actual.objetos,&actual.vida,
+                            &actual.ataque,&actual.defensa,&actual.nivel,&actual.exp) != 9) {
                         correcto = 0;
                     }
                 } else {
@@ -782,7 +770,7 @@ void mostrar_highscores(void) {
     cantidad = 0;
     correcto = 1;
 
-    archivo = fopen("highscore.txt", "r");
+    archivo = fopen("highscore.txt", "a");
 
     if (archivo == NULL) {
         printf("No hay resultados disponibles ");
@@ -825,21 +813,8 @@ void mostrar_highscores(void) {
             if (correcto == 1) {
                 if (fgets(linea, sizeof(linea), archivo) != NULL) {
                     //indica la direccion de cada campo donde sscanf debe almacenar un numero.
-                    if (
-                        sscanf(
-                            linea,
-                            "%d %d %d %d %d %d %d %d %d",
-                            &actual.piso,
-                            &actual.cuartos,
-                            &actual.enemigos,
-                            &actual.objetos,
-                            &actual.player.vida,
-                            &actual.player.ataque,
-                            &actual.player.defensa,
-                            &actual.player.nivel,
-                            &actual.player.exp
-                        ) != 9
-                    ) {
+                    if (sscanf(linea,"%d %d %d %d %d %d %d %d %d",&actual.piso,&actual.cuartos,&actual.enemigos, &actual.objetos,
+                            &actual.player.vida,&actual.player.ataque,&actual.player.defensa,&actual.player.nivel,&actual.player.exp) != 9) {
                         /* No se pudieron obtener los nueve datos. */
                         correcto = 0;
                     }
@@ -847,9 +822,7 @@ void mostrar_highscores(void) {
                     correcto = 0;
                 }
             }
-
-            /*
-             * Solo agrega registros completos de victorias.
+             /* Solo agrega registros completos de victorias.
              * Las derrotas se leen, pero no se muestran.
              */
             if (correcto == 1 && victoria == 1) {
@@ -874,12 +847,10 @@ void mostrar_highscores(void) {
             }
         }
 
-        /* Distingue un error de lectura de un fin normal del archivo. */
+        //* Distingue un error de lectura//
         if (ferror(archivo)) {
             correcto = 0;
         }
-
-        /* El archivo ya no se necesita para mostrar los datos. */
         fclose(archivo);
 
         if (correcto == 0) {
@@ -895,13 +866,9 @@ void mostrar_highscores(void) {
             printf("\n===== ULTIMAS CINCO VICTORIAS =====\n");
 
             /*
-             * Recorre desde la ultima posicion ocupada
-             * hasta la primera para mostrar primero
-             * la victoria mas reciente.
-             */
+             * Recorre desde la ultima posicion ocupada hasta la primera para mostrar primero la victoria mas reciente.*/
             for (i = cantidad - 1; i >= 0; i--) {
                 printf("\n----------------------------------\n");
-
                 printf(
                     "Nombre: %s\n",
                     ultimas[i].player.nombre
