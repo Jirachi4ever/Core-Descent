@@ -15,7 +15,7 @@ enum {NOBJETOS = 10};
 
 typedef struct{
     StringCorto nombre;
-    int vida, ataque, defensa, exp;
+    int vida, ataque, defensa, exp, nivel;
 }Jugador;
 
 typedef struct{
@@ -33,6 +33,14 @@ typedef struct{
     int id, value;
 }Items;
 
+typedef struct {
+    Jugador player;
+    int piso;
+    int cuartos;
+    int enemigos;
+    int objetos;
+} Resultado;
+
 typedef Items Catalogo [NOBJETOS];
 
 typedef Entity Entities [NMONSTRUOS];
@@ -44,15 +52,15 @@ typedef struct{
     Catalogo objetos, inv;
 }Gamestate;
 
-Gamestate cargar_config(); 
+Gamestate cargar_config(Gamestate state); 
 
-void cargar_bestiario(); 
+void cargar_bestiario(Entity *bestiary); 
 
-void cargar_objeto();
+void cargar_objeto(Items *objetos);
 
 void menu();
 
-void menu_combate();
+void menu_combate(Gamestate state);
 
 void menu_fueradecombate();
 
@@ -77,6 +85,10 @@ void verificarSubidaNivel(Gamestate state); // En desarrollo
 void guardar_partida(Gamestate estado); // faltan pruebas
 
 int cargarPartida(Gamestate *state);
+
+void registrar_highscore(Gamestate state,int victoria,int cuartos_explorados,int enemigos_derrotados,int objetos_consumidos);
+
+void mostrar_highscores();
 /*
 
 Modulos por configurar y concretar
@@ -136,7 +148,7 @@ int main(){
             case 1:// nueva partida
                 inmenu = false;
                 state = cargar_config(state); // Se carga toda la configuración
-
+                state.player.nivel=1;
                 srand(state.ubi.seed); // Empieza la aleatorización por semilla
                 
                 state = insertar_nombre(state); // El usuario ingresa su nombre
@@ -496,6 +508,423 @@ Gamestate insertar_nombre(Gamestate state) { // Nombre del jugador
     }
 
     return state;
+
+void mostrar_highscores(void) {
+    FILE *archivo;
+
+    /* Arreglo que conserva las ultimas cinco victorias leidas. */
+    Resultado ultimas[5];
+
+    /* Registro auxiliar para leer una partida del archivo. */
+    Resultado actual;
+
+    /* Arreglo de caracteres para leer una linea a la vez. */
+    StringLargo linea;
+
+    int victoria; 
+    int cantidad; 
+    int correcto; 
+    int i;        
+
+    cantidad = 0;
+    correcto = 1;
+
+    archivo = fopen("highscore.txt", "r");
+
+    if (archivo == NULL) {
+        printf("No hay resultados disponibles ");
+        printf("o no se pudo abrir highscore.txt.\n");
+    } else {
+        while (
+            correcto == 1 &&
+            fgets(linea, sizeof(linea), archivo) != NULL
+        ) {
+            //Primera linea: convierte el texto en un entero.Debe obtener exactamente un valor.//
+             
+            if (sscanf(linea, "%d", &victoria) != 1) {
+                correcto = 0;
+            } else {
+                if (victoria != 0 && victoria != 1) {
+                    correcto = 0;
+                }
+            }
+
+            /* Segunda linea: nombre del jugador. */
+            if (correcto == 1) {
+                if (fgets(linea, sizeof(linea), archivo) != NULL) {
+
+                    /* Elimina el salto de linea del texto */
+                    linea[strcspn(linea, "\r\n")] = '\0';
+                    //validacion
+                    if (
+                        strlen(linea) <
+                        sizeof(actual.player.nombre)
+                    ) {
+                        strcpy(actual.player.nombre, linea);
+                    } else {
+                        correcto = 0;
+                    }
+                } else {
+                    correcto = 0;
+                }
+            }
+
+            //estadisticas de la partida//
+            if (correcto == 1) {
+                if (fgets(linea, sizeof(linea), archivo) != NULL) {
+                    if (sscanf(linea,"%d %d %d %d %d %d %d %d %d",&actual.piso,&actual.cuartos,&actual.enemigos,&actual.objetos,&actual.player.vida,
+                        &actual.player.ataque,&actual.player.defensa,&actual.player.nivel,&actual.player.exp) != 9) {
+                        /* No se pudieron obtener los nueve datos. */
+                        correcto = 0;
+                    }
+                } else {
+                    correcto = 0;
+                }
+            }
+
+            if (correcto == 1 && victoria == 1) {
+                if (cantidad < 5) {
+
+                    /* Todavia queda una posicion disponible. */
+                    ultimas[cantidad] = actual;
+                    cantidad++;
+
+                } else {
+                    /*
+                     * Si ya hay cinco victorias, desplaza
+                     * las posiciones y descarta la mas antigua.
+                     */
+                    for (i = 0; i < 4; i++) {
+                        ultimas[i] = ultimas[i + 1];
+                    }
+
+                    /* Guarda la nueva victoria al final. */
+                    ultimas[4] = actual;
+                }
+            }
+        }
+
+        if (ferror(archivo)) {
+            correcto = 0;
+        }
+        fclose(archivo);
+
+        if (correcto == 0) {
+            printf("\nEl archivo contiene datos incompletos ");
+            printf("o no se pudo leer correctamente.\n");
+            printf("Se mostraran los resultados validos ");
+            printf("leidos hasta ese punto.\n");
+        }
+
+        if (cantidad == 0) {
+            printf("\nNo hay victorias disponibles para mostrar.\n");
+        } else {
+            printf("\n===== ULTIMAS CINCO VICTORIAS =====\n");
+
+            for (i = cantidad - 1; i >= 0; i--) {
+                printf("\n----------------------------------\n");
+
+                printf(
+                    "Nombre: %s\n",
+                    ultimas[i].player.nombre
+                );
+
+                printf("Piso alcanzado: %d\n", ultimas[i].piso);
+                printf("Cuartos explorados: %d\n", ultimas[i].cuartos);
+                printf("Enemigos derrotados: %d\n", ultimas[i].enemigos);
+                printf("Objetos consumidos: %d\n", ultimas[i].objetos);
+
+                printf("Vida final: %d\n", ultimas[i].player.vida);
+                printf("Ataque final: %d\n", ultimas[i].player.ataque);
+                printf("Defensa final: %d\n", ultimas[i].player.defensa);
+                printf("Nivel final: %d\n", ultimas[i].player.nivel);
+                printf("Experiencia: %d\n", ultimas[i].player.exp);
+            }
+
+            printf("----------------------------------\n");
+        }
+    }
+}
+void mostrar_highscores(void) {
+    FILE *archivo;
+    Resultado ultimas[5];
+    Resultado actual;
+    StringLargo linea;
+    int victoria;
+    int cantidad;
+    int correcto;
+    int i;
+
+    cantidad = 0;
+    correcto = 1;
+
+    archivo = fopen("highscore.txt", "r");
+
+    if (archivo == NULL) {
+        printf("No hay resultados disponibles ");
+        printf("o no se pudo abrir highscore.txt.\n");
+    } else {
+        while (
+            correcto == 1 &&
+            fgets(linea, sizeof(linea), archivo) != NULL
+        ) {
+            if (sscanf(linea, "%d", &victoria) != 1) {
+                correcto = 0;
+            } else {
+                if (victoria != 0 && victoria != 1) {
+                    correcto = 0;
+                }
+            }
+
+            if (correcto == 1) {
+                if (fgets(linea, sizeof(linea), archivo) != NULL) {
+                    linea[strcspn(linea, "\r\n")] = '\0';
+
+                    if (strlen(linea) < sizeof(actual.nombre)) {
+                        strcpy(actual.nombre, linea);
+                    } else {
+                        correcto = 0;
+                    }
+                } else {
+                    correcto = 0;
+                }
+            }
+
+            if (correcto == 1) {
+                if (fgets(linea, sizeof(linea), archivo) != NULL) {
+                    if (
+                        sscanf(
+                            linea,
+                            "%d %d %d %d %d %d %d %d %d",
+                            &actual.piso,
+                            &actual.cuartos,
+                            &actual.enemigos,
+                            &actual.objetos,
+                            &actual.vida,
+                            &actual.ataque,
+                            &actual.defensa,
+                            &actual.nivel,
+                            &actual.exp
+                        ) != 9
+                    ) {
+                        correcto = 0;
+                    }
+                } else {
+                    correcto = 0;
+                }
+            }
+
+            if (correcto == 1 && victoria == 1) {
+                if (cantidad < 5) {
+                    ultimas[cantidad] = actual;
+                    cantidad++;
+                } else {
+                    for (i = 0; i < 4; i++) {
+                        ultimas[i] = ultimas[i + 1];
+                    }
+
+                    ultimas[4] = actual;
+                }
+            }
+        }
+
+        if (ferror(archivo)) {
+            correcto = 0;
+        }
+
+        fclose(archivo);
+
+        if (correcto == 0) {
+            printf("\nEl archivo contiene datos incompletos ");
+            printf("o no se pudo leer correctamente.\n");
+            printf("Se mostraran los resultados validos ");
+            printf("leidos hasta ese punto.\n");
+        }
+
+        if (cantidad == 0) {
+            printf("\nNo hay victorias disponibles para mostrar.\n");
+        } else {
+            printf("\n===== ULTIMAS CINCO VICTORIAS =====\n");
+
+            for (i = cantidad - 1; i >= 0; i--) {
+                printf("\n----------------------------------\n");
+                printf("Nombre: %s\n", ultimas[i].nombre);
+                printf("Piso alcanzado: %d\n", ultimas[i].piso);
+                printf("Cuartos explorados: %d\n", ultimas[i].cuartos);
+                printf("Enemigos derrotados: %d\n", ultimas[i].enemigos);
+                printf("Objetos consumidos: %d\n", ultimas[i].objetos);
+                printf("Vida final: %d\n", ultimas[i].vida);
+                printf("Ataque final: %d\n", ultimas[i].ataque);
+                printf("Defensa final: %d\n", ultimas[i].defensa);
+                printf("Nivel final: %d\n", ultimas[i].nivel);
+                printf("Experiencia: %d\n", ultimas[i].exp);
+            }
+
+            printf("----------------------------------\n");
+        }
+    }
+}
+
+void mostrar_highscores(void) {
+    FILE *archivo;
+
+    //conserva las ultimas cinco victorias leidas//
+    Resultado ultimas[5];
+
+    // Registro auxiliar //
+    Resultado actual;
+    StringLargo linea;
+
+    int victoria; 
+    int cantidad; 
+    int correcto; 
+    int i;       
+    cantidad = 0;
+    correcto = 1;
+
+    archivo = fopen("highscore.txt", "r");
+
+    if (archivo == NULL) {
+        printf("No hay resultados disponibles ");
+        printf("o no se pudo abrir highscore.txt.\n");
+    } else {
+        while (
+            correcto == 1 &&
+            fgets(linea, sizeof(linea), archivo) != NULL
+        ) {
+            //convierte el texto en un entero.* Debe obtener exactamente un valor.//
+            if (sscanf(linea, "%d", &victoria) != 1) {
+                correcto = 0;
+            } else {
+                if (victoria != 0 && victoria != 1) {
+                    correcto = 0;
+                }
+            }
+
+            /* Segunda linea: nombre del jugador. */
+            if (correcto == 1) {
+                if (fgets(linea, sizeof(linea), archivo) != NULL) {
+                    linea[strcspn(linea, "\r\n")] = '\0';
+
+                    // Comprueba que el nombre quepa en el arreglo
+                    if (
+                        strlen(linea) <
+                        sizeof(actual.player.nombre)
+                    ) {
+                        strcpy(actual.player.nombre, linea);
+                    } else {
+                        correcto = 0;
+                    }
+                } else {
+                    /* El registro esta incompleto. */
+                    correcto = 0;
+                }
+            }
+
+            /* Tercera linea: estadisticas de la partida. */
+            if (correcto == 1) {
+                if (fgets(linea, sizeof(linea), archivo) != NULL) {
+                    //indica la direccion de cada campo donde sscanf debe almacenar un numero.
+                    if (
+                        sscanf(
+                            linea,
+                            "%d %d %d %d %d %d %d %d %d",
+                            &actual.piso,
+                            &actual.cuartos,
+                            &actual.enemigos,
+                            &actual.objetos,
+                            &actual.player.vida,
+                            &actual.player.ataque,
+                            &actual.player.defensa,
+                            &actual.player.nivel,
+                            &actual.player.exp
+                        ) != 9
+                    ) {
+                        /* No se pudieron obtener los nueve datos. */
+                        correcto = 0;
+                    }
+                } else {
+                    correcto = 0;
+                }
+            }
+
+            /*
+             * Solo agrega registros completos de victorias.
+             * Las derrotas se leen, pero no se muestran.
+             */
+            if (correcto == 1 && victoria == 1) {
+                if (cantidad < 5) {
+
+                    /* Todavia queda una posicion disponible. */
+                    ultimas[cantidad] = actual;
+                    cantidad++;
+
+                } else {
+                    /*
+                     * Si ya hay cinco victorias, desplaza
+                     * las posiciones y descarta la mas antigua.
+                     */
+                    for (i = 0; i < 4; i++) {
+                        ultimas[i] = ultimas[i + 1];
+                    }
+
+                    /* Guarda la nueva victoria al final. */
+                    ultimas[4] = actual;
+                }
+            }
+        }
+
+        /* Distingue un error de lectura de un fin normal del archivo. */
+        if (ferror(archivo)) {
+            correcto = 0;
+        }
+
+        /* El archivo ya no se necesita para mostrar los datos. */
+        fclose(archivo);
+
+        if (correcto == 0) {
+            printf("\nEl archivo contiene datos incompletos ");
+            printf("o no se pudo leer correctamente.\n");
+            printf("Se mostraran los resultados validos ");
+            printf("leidos hasta ese punto.\n");
+        }
+
+        if (cantidad == 0) {
+            printf("\nNo hay victorias disponibles para mostrar.\n");
+        } else {
+            printf("\n===== ULTIMAS CINCO VICTORIAS =====\n");
+
+            /*
+             * Recorre desde la ultima posicion ocupada
+             * hasta la primera para mostrar primero
+             * la victoria mas reciente.
+             */
+            for (i = cantidad - 1; i >= 0; i--) {
+                printf("\n----------------------------------\n");
+
+                printf(
+                    "Nombre: %s\n",
+                    ultimas[i].player.nombre
+                );
+
+                printf("Piso alcanzado: %d\n", ultimas[i].piso);
+                printf("Cuartos explorados: %d\n", ultimas[i].cuartos);
+                printf("Enemigos derrotados: %d\n", ultimas[i].enemigos);
+                printf("Objetos consumidos: %d\n", ultimas[i].objetos);
+
+                printf("Vida final: %d\n", ultimas[i].player.vida);
+                printf("Ataque final: %d\n", ultimas[i].player.ataque);
+                printf("Defensa final: %d\n", ultimas[i].player.defensa);
+                printf("Nivel final: %d\n", ultimas[i].player.nivel);
+                printf("Experiencia: %d\n", ultimas[i].player.exp);
+            }
+
+            printf("----------------------------------\n");
+        }
+    }
+}
+
+    
 }
 void guardar_partida(Gamestate estado){
     FILE *salida;
@@ -513,7 +942,7 @@ void guardar_partida(Gamestate estado){
         fprintf(salida,"%d %d %d\n",estado.player.vida,estado.player.ataque,estado.player.defensa);
 
         /* Nivel actual y experiencia*/
-        fprintf(salida,"%d %d\n",estado.player.exp);
+        fprintf(salida,"%d %d\n",estado.player.exp,estado.player.nivel);
 
         /* Ubicacion: piso y cuarto*/
         fprintf(salida,"%d %d\n",estado.ubi.piso,estado.ubi.sala);
@@ -575,7 +1004,7 @@ int cargarPartida(Gamestate *state)
         /* Leer experiencia */
         if (correcto == 1) {
             if (fgets(linea, sizeof linea, archivo) != NULL) { 
-                if (sscanf(linea,"%d",&temporal.player.exp) != 1) {
+                if (sscanf(linea,"%d",&temporal.player.exp,&temporal.player.nivel) != 2) {
                     correcto = 0;
                 }
             } else {
@@ -626,6 +1055,7 @@ int cargarPartida(Gamestate *state)
                 temporal.player.ataque < 0 ||
                 temporal.player.defensa < 0 ||
                 temporal.player.exp < 0 ||
+                temporal.player.nivel < 1 ||
                 temporal.ubi.piso < 1 ||
                 temporal.ubi.piso > temporal.ubi.cant_pisos ||
                 temporal.ubi.sala < 0) {
