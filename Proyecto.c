@@ -5,17 +5,20 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdbool.h>
-#include <math.h>
 
 typedef char StringLargo[100];
 typedef char StringCorto [30];
 
 enum {NMONSTRUOS = 10};
-enum {NOBJETOS = 10};
+enum {NOBJETOS = 5};
 
 typedef struct{
     StringCorto nombre;
+<<<<<<< HEAD
     int vida, ataque, defensa, exp, nivel;
+=======
+    int vida, ataque, defensa, nivel, exp, exp_cap;
+>>>>>>> f25b487 (Minor bugs update)
 }Jugador;
 
 typedef struct{
@@ -64,7 +67,11 @@ void menu_combate(Gamestate state);
 
 void menu_fueradecombate();
 
+Gamestate fueradecombate(Gamestate state);
+
 void menu_inventario(Gamestate state);
+
+Gamestate mochila(Gamestate state);
 
 void seed(int semilla);
 
@@ -74,13 +81,15 @@ Gamestate SeleccionarEnemigo(Gamestate state);
 
 Gamestate avanzarSala (Gamestate state);
 
-void iniciarCombate(Gamestate state, bool incombat);
+void iniciarCombate(Gamestate state, int *victory);
 
-int calcularDaño(int ataque_atacante, int defensa_defensor); // Falta Critico
+int calcularDaño(int ataque_atacante, int defensa_defensor);
 
-Gamestate otorgarRecompensa(Gamestate state, Catalogo objetos, Entities oponente, int total_inv); // En desarrollo
+Gamestate otorgarRecompensa(Gamestate state); // Completo (Por testear)
 
-void verificarSubidaNivel(Gamestate state); // En desarrollo
+Gamestate verificarSubidaNivel(Gamestate state); // En desarrollo
+
+void usar_objeto(Gamestate state); // En desarrollo
 
 void guardar_partida(Gamestate estado); // faltan pruebas
 
@@ -93,28 +102,40 @@ void mostrar_highscores();
 
 Modulos por configurar y concretar
 
-Módulo 3 (Actualmente en desarrollo):
+Módulo 3 (Fase de Pruebas):
 void iniciarCombate(Estadojuego *estado, Entidad *enemigo); // Completo
 int calcularDaño(int ataque_atacante, int defensa_defensor); // Completo
 void otorgarRecompensa(EstadoJuego *estado, Objeto catalogo[], 
 int total_objetos, char tipo_enemigo[]); // Completo
-void verificarSubidaNivel(EstadoJuego *estado); // En desarrollo
+void verificarSubidaNivel(EstadoJuego *estado); // Completo
 
-Módulo 4:
-void usar_objeto(EstadoJuego *estado);
+Módulo 4 (Fase de Pruebas):
+void usar_objeto(EstadoJuego *estado); 
 
+<<<<<<< HEAD
 Módulo 5:
 void guardar_partida(EstadoJuego *estado); //pruebas
 int cargar_partida(EstadoJuego *estado); //pruebas
 void registrar_highscore(EstadoJuego estado, bool victoria);//desarrollo
+=======
+Módulo 5 (En desarrollo):
+void guardar_partida(EstadoJuego *estado);
+int cargar_partida(EstadoJuego *estado);
+void registrar_highscore(EstadoJuego estado, bool victoria);
+>>>>>>> f25b487 (Minor bugs update)
 */
 
 int main(){
 
     Gamestate state = {0};
+<<<<<<< HEAD
     int op, carga;
     StringLargo s;
     bool inmenu = true, incombat = false;
+=======
+    int op, combat_victory = 0;
+    bool main_menu = true, ingame = false, victoria = false;
+>>>>>>> f25b487 (Minor bugs update)
 
     cargar_bestiario(state.bestiary);
     cargar_objeto(state.objetos);
@@ -142,33 +163,50 @@ int main(){
     scanf("%d", &op);
 
 
-    while(inmenu){
+    while(main_menu){
         switch(op)
         {
+<<<<<<< HEAD
             case 1:// nueva partida
                 inmenu = false;
+=======
+            case 1:
+                main_menu = false;
+                ingame = true;
+>>>>>>> f25b487 (Minor bugs update)
                 state = cargar_config(state); // Se carga toda la configuración
                 state.player.nivel=1;
                 srand(state.ubi.seed); // Empieza la aleatorización por semilla
                 
                 state = insertar_nombre(state); // El usuario ingresa su nombre
                 
-                //Verificación de estadisticas (Para pruebas)
-                printf("Datos\nNombre: %s\nVida: %d\nAtaque: %d\nDefensa: %d\nExperiencia: %d\nPiso: %d\nSala: %d\n",
+                /*Verificación de estadisticas (Para pruebas)
+                printf("Datos\nNombre: %s\nVida: %d\nAtaque: %d\nDefensa: %d\nNivel: %d\nExperiencia: %d\nPiso: %d\nSala: %d\nCap: %d\n",
                 state.player.nombre,state.player.vida,state.player.ataque,state.player.defensa,
-                state.player.exp,state.ubi.piso,state.ubi.sala);
+                state.player.nivel,state.player.exp,state.ubi.piso,state.ubi.sala,state.player.exp_cap);*/
                 
                 printf("Una vez en la mazmorra notas algo moviendose en la oscuridad...\n");
                 printf("Piensas en volver, más tu cometido no te permite retroceder.\n");
+                
+                while(ingame){
+                    state = fueradecombate(state);
 
-                state = avanzarSala(state);
+                    state = SeleccionarEnemigo(state);
 
-                state = SeleccionarEnemigo(state);
+                    printf("¡%s ha aparecido!\n", state.oponente[0].name);
 
-                printf("¡%s ha aparecido!\n", state.oponente[0].name);
+                    iniciarCombate(state, &combat_victory);
 
-                iniciarCombate(state,incombat);
+                    if(combat_victory == 1){ // Jugador Ganó
+                        state = otorgarRecompensa(state);
+                        avanzarSala(state);
+                    } else if (combat_victory == 0) { // Jugador perdió
 
+                        ingame = false;
+                    }else{ // Jugador escapó
+                        
+                    }
+                }
             break;
 
             case 2: //cargar partida
@@ -184,8 +222,13 @@ int main(){
                     mostrar_highscores();
             break;
 
+<<<<<<< HEAD
             case 4://salir
                 inmenu = false;
+=======
+            case 4:
+                main_menu = false;
+>>>>>>> f25b487 (Minor bugs update)
             break;
 
             default:
@@ -194,7 +237,7 @@ int main(){
 
         }
 
-        if(inmenu == true){
+        if(main_menu == true){
             printf("Seleccione otra opción.");
             scanf("%d", &op);
         }
@@ -216,8 +259,8 @@ Gamestate cargar_config(Gamestate state){ // Cargado de la configuración genera
 
     //Cargado de datos, Semilla, Cantidad de Pisos, Total de Salas, Stats y "ubicación" del jugador
     fscanf(config, "%d %d %d",&state.ubi.seed,&state.ubi.cant_pisos,&state.ubi.total_salas); 
-    fscanf(config, "%d %d %d %d %d %d",&state.player.vida,&state.player.ataque,&state.player.defensa,
-        &state.player.exp,&state.ubi.piso,&state.ubi.sala);
+    fscanf(config, "%d %d %d %d %d %d %d %d",&state.player.vida,&state.player.ataque,&state.player.defensa,
+        &state.player.nivel,&state.player.exp,&state.ubi.piso,&state.ubi.sala,&state.player.exp_cap);
     fclose(config);
     return state;
 }
@@ -263,13 +306,12 @@ void cargar_objeto(Catalogo objetos){ // Cargado de los Objetos
         StringLargo linea;
         fgets(objetos[i].name, sizeof objetos[i].name, lista_objetos);
         objetos[i].name[strcspn(objetos[i].name, "\r\n")] = '\0';
-             
+
         fgets(linea, sizeof linea, lista_objetos);
         sscanf(linea, "%d %d %19s",
         &objetos[i].id,
         &objetos[i].value,
         objetos[i].effect);
-                
     }
     
     fclose(lista_objetos);
@@ -277,7 +319,7 @@ void cargar_objeto(Catalogo objetos){ // Cargado de los Objetos
 
 Gamestate SeleccionarEnemigo(Gamestate state){
     Entities enemigo_posible;
-    int cantidad_posible = 0, id_random;
+    int cantidad_posible = 0;
     state.ubi.prom_sala = state.ubi.total_salas / state.ubi.cant_pisos;
 
     if(state.ubi.sala == state.ubi.prom_sala + 1){
@@ -287,17 +329,21 @@ Gamestate SeleccionarEnemigo(Gamestate state){
                 cantidad_posible++;
             }
         }
-    }
-
-    if(state.ubi.sala == state.ubi.prom_sala){
+    } else if((state.ubi.piso == 1) && (state.ubi.sala == state.ubi.prom_sala - 1)){
         for (int i = 0; i < NMONSTRUOS; i++){
             if(state.bestiary[i].rarity == 2){ // Sólo si la rareza del monstruo es 2 (Raro)
                 enemigo_posible[cantidad_posible] = state.bestiary[i];
                 cantidad_posible++;
             }
         }
-    } else if(state.ubi.sala < state.ubi.prom_sala){
-
+    } else if(state.ubi.sala == state.ubi.prom_sala){
+        for (int i = 0; i < NMONSTRUOS; i++){
+            if(state.bestiary[i].rarity == 2){ // Sólo si la rareza del monstruo es 2 (Raro)
+                enemigo_posible[cantidad_posible] = state.bestiary[i];
+                cantidad_posible++;
+            }
+        }
+    } else {
         for (int i = 0; i < NMONSTRUOS; i++){
             if(state.bestiary[i].rarity == 1){ // Sólo si la rareza del monstruo es 1 (Común)
                 enemigo_posible[cantidad_posible] = state.bestiary[i];
@@ -314,13 +360,20 @@ return state;
 }
 
 Gamestate avanzarSala (Gamestate state){
+
+    if((state.ubi.piso == 1) && (state.ubi.sala == state.ubi.prom_sala - 1)){
+        state.ubi.sala = 0;
+        state.ubi.piso = state.ubi.piso + 1;
+        printf("Avanzas al siguiente piso...\n");
+    }
     if(state.ubi.sala == state.ubi.prom_sala){
         state.ubi.piso = state.ubi.piso + 1;
         state.ubi.sala = 0;
+        printf("Avanzas al siguiente piso...\n");
     } else {
         state.ubi.sala = state.ubi.sala + 1;
+        printf("Avanzas una sala...\n");
     }
-
     return state;
 }
 
@@ -339,6 +392,36 @@ void menu_fueradecombate(){
     printf("[2] - Mochila\n");
     printf("[3] - Guardar y salir\n");
     printf("<===========================================>\n");
+}
+
+Gamestate fueradecombate(Gamestate state){
+    int op;
+    bool inmenu = true;
+
+    while(inmenu){
+        menu_fueradecombate();
+        scanf("%d", &op);
+
+        switch (op)
+        {
+        case 1:
+            state = avanzarSala(state);
+            inmenu = false;
+            break;
+
+        case 2:
+            mochila(state);
+            break;
+        
+        case 3:
+            /* Guardar y salir */
+            break;
+        
+        default:
+            break;
+        }
+    }
+return state;
 }
 
 void menu_combate(Gamestate state){
@@ -370,9 +453,48 @@ void menu_inventario(Gamestate state){
 
 }
 
-void iniciarCombate(Gamestate state, bool incombat){ // En desarrollo
-    incombat = true;
-    int op2, atk_atacante, def_defensor, daño_infligido, total_inv = 3;
+Gamestate mochila(Gamestate state){
+    int op_items;
+    bool inmenu = true;
+
+    menu_inventario(state);
+    scanf("%d", &op_items);
+    
+    while(inmenu){
+        switch(op_items)
+        {
+            case 1:
+                //usar_objeto(state);
+                inmenu = false;
+            break;
+
+            case 2:
+                //usar_objeto(state);
+                inmenu = false;
+            break;
+
+            case 3:
+                //usar_objeto(state);
+                inmenu = false;
+            break;
+
+            case 4:
+                inmenu = false;
+            break;
+
+            default:
+                printf("ERROR! Opcion no valida.\n");            
+            break;
+        }
+        if(inmenu){
+                scanf("%d", &op_items);
+        }
+    }
+}
+
+void iniciarCombate(Gamestate state, int *combat_victory){ // En desarrollo
+    bool incombat = true;
+    int op2, atk_atacante, def_defensor, daño_infligido;
 
     menu_combate(state);
     scanf("%d", &op2);
@@ -382,42 +504,67 @@ void iniciarCombate(Gamestate state, bool incombat){ // En desarrollo
         switch (op2)
 
         {
-        case 1:
+            case 1:
 
-            atk_atacante = state.player.ataque, def_defensor = state.oponente[0].def;
-            daño_infligido = calcularDaño(atk_atacante, def_defensor);
-            state.oponente[0].hp = state.oponente[0].hp - daño_infligido;
+                atk_atacante = state.player.ataque, def_defensor = state.oponente[0].def;
+                daño_infligido = calcularDaño(atk_atacante, def_defensor);
+                state.oponente[0].hp = state.oponente[0].hp - daño_infligido;
 
-            printf("¡Has infligido %d puntos de daño!\n", daño_infligido);
+                printf("¡Has infligido %d puntos de daño!\n", daño_infligido);
 
-            atk_atacante = state.oponente[0].atk, def_defensor = state.player.defensa;
-            daño_infligido = calcularDaño(atk_atacante, def_defensor);
-            state.player.vida = state.player.vida - daño_infligido;
-
-            printf("¡Has recibido %d puntos de daño!\n", daño_infligido);
+                if(state.oponente[0].hp > 0){
+                    atk_atacante = state.oponente[0].atk, def_defensor = state.player.defensa;
+                    daño_infligido = calcularDaño(atk_atacante, def_defensor);
+                    state.player.vida = state.player.vida - daño_infligido;
+                    printf("¡Has recibido %d puntos de daño!\n", daño_infligido);
+                }
 
             break;
 
-        case 2:
+            case 2:
 
-            menu_inventario(state);
+                menu_inventario(state);
 
-        break;
+            break;
 
-        case 3:
+            case 3:
 
-        break;
-        
-        default:
+                int prob_escape;
+                prob_escape = rand() % 100;
+                if(prob_escape < 15){
+                    printf("¡Has escapado con éxito!");
+                    *combat_victory = 2;
+                    incombat = false;
+                } else {
+                    printf("Has fallado en escapar...");
+                    atk_atacante = state.oponente[0].atk, def_defensor = state.player.defensa;
+                    daño_infligido = calcularDaño(atk_atacante, def_defensor);
+                    state.player.vida = state.player.vida - daño_infligido;
+                    printf("¡Has recibido %d puntos de daño!\n", daño_infligido);
+                }
+
+            break;
+            
+            default:
+                printf("ERROR! Opcion no valida.\n");
             break;
         }
 
-        if(state.player.vida == 0 || state.oponente[0].hp == 0){
+        if(state.player.vida <= 0) {
+            *combat_victory = 0;
             incombat = false;
+            break;
+        }
+            if (state.oponente[0].hp <= 0){
+            *combat_victory = 1;
+            incombat = false;
+<<<<<<< HEAD
 
             if(state.player.vida == 0){printf("Has sido derrotado...\n");}
             if(state.oponente[0].hp == 0){printf("¡Has salido victorioso!\n");}
             remove("partida_guardada.txt"); //elimina la partida guardada
+=======
+>>>>>>> f25b487 (Minor bugs update)
             break;
         }
 
@@ -427,7 +574,7 @@ void iniciarCombate(Gamestate state, bool incombat){ // En desarrollo
 
 }
 
-int calcularDaño(int atk_atacante, int def_defensor){ // Probabilidad de critico por añadir (En desarrollo)
+int calcularDaño(int atk_atacante, int def_defensor){
     int damage, defensa_real = (def_defensor > 1) ? def_defensor : 1;
     int base_dmg = 5;
 
@@ -444,46 +591,65 @@ int calcularDaño(int atk_atacante, int def_defensor){ // Probabilidad de critic
     return damage;
 }
 
-Gamestate otorgarRecompensa(Gamestate state, Catalogo objetos, Entities oponente, int total_inv){
+Gamestate otorgarRecompensa(Gamestate state){
 
-    bool recompensado = false;
-    int id_random;
+    int id_random, total_inv = 3, exp_comun = 25, exp_raro = 40;
 
-    if(state.oponente[0].rarity == 2){
+    if(state.oponente[0].rarity == 2){ // Monstruo Raro
         for(int l = 0; l < total_inv; l++){
-            if (state.inv[l].id == '\0' && !recompensado){
+            if (state.inv[l].id == '\0'){
                 id_random = rand() % NOBJETOS;
                 for (int m = 0; m < NOBJETOS; m++){
                     if(id_random == state.objetos[m].id){
                         state.inv[l] = state.objetos[m];
+                        printf("¡Has recibido %s!\n", state.objetos[m].name);
+                        break;
                     }
                 }
-                recompensado = true;    
+            break;
             }
         }
+        state.player.exp = state.player.exp + exp_raro;
+        printf("Obtienes %d puntos de experiencia\n", exp_raro);
     }
 
-    if(state.oponente[0].rarity == 1){
+    if(state.oponente[0].rarity == 1){ //Monstruo Común
         id_random = (rand() % 100) + 1;
         if(id_random <= 25){
             for(int l = 0; l < 3; l++){
-                if (state.inv[l].id == '\0' && !recompensado){
+                if (state.inv[l].id == '\0'){
                     id_random = rand() % NOBJETOS;
                     for (int m = 0; m < NOBJETOS; m++){
                         if(id_random == state.objetos[m].id){
                             state.inv[l] = state.objetos[m];
+                            printf("¡Has recibido %s\n!", state.objetos[m].name);
+                            break;
                         }
                     }
-                    recompensado = true;    
+                break;
                 }
             }
         }
+        state.player.exp = state.player.exp + exp_comun;
+        printf("Obtienes %d puntos de experiencia\n", exp_comun);
     }
-    
+
+state = verificarSubidaNivel(state);
+return state;
 }
 
-void verificarSubidaNivel(Gamestate state){
-    
+Gamestate verificarSubidaNivel(Gamestate state){ // Developing
+
+    while (state.player.exp >= state.player.exp_cap){
+        state.player.exp = state.player.exp - state.player.exp_cap;
+        state.player.nivel++;
+        state.player.ataque = state.player.ataque + 5;
+        state.player.defensa = state.player.defensa + 5;
+        state.player.vida = state.player.vida + 5;
+        state.player.exp_cap = state.player.exp_cap + 25;
+        printf("¡Has subido de nivel! +5 a todas las estadisticas.");
+    }
+    return state;
 }
 
 Gamestate insertar_nombre(Gamestate state) { // Nombre del jugador
