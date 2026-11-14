@@ -95,25 +95,6 @@ void jugar(Gamestate state);
 void registrar_highscore(Gamestate state, bool victoria);
 
 void cargar_objeto(Catalogo objetos);
-/*
-
-Modulos por configurar y concretar
-
-Módulo 3 (Fase de Pruebas):
-void iniciarCombate(Estadojuego *estado, Entidad *enemigo); // Completo
-int calcularDaño(int ataque_atacante, int defensa_defensor); // Completo
-void otorgarRecompensa(EstadoJuego *estado, Objeto catalogo[], 
-int total_objetos, char tipo_enemigo[]); // Completo
-void verificarSubidaNivel(EstadoJuego *estado); // Completo
-
-Módulo 4 (Fase de Pruebas):
-void usar_objeto(EstadoJuego *estado); // Completo
-
-Módulo 5 (Fase de Pruebas):
-void guardar_partida(EstadoJuego *estado);
-int cargar_partida(EstadoJuego *estado);
-void registrar_highscore(EstadoJuego estado, bool victoria);
-*/
 
 int main(){
 
