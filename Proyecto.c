@@ -191,6 +191,7 @@ int main(){
 
             default:
                 printf("ERROR! Opcion no valida.\n");
+                op = 0;
             break;
 
         }
@@ -355,7 +356,7 @@ Gamestate avanzarSala (Gamestate state, int combat_victory){
             state.ubi.sala = 1;
             state.ubi.piso = state.ubi.piso + 1;
             printf("Avanzas al siguiente piso...\n");
-        }else if (state.ubi.piso == state.ubi.cant_pisos) {
+        }else if ((state.ubi.piso == state.ubi.cant_pisos) && (state.ubi.sala == state.ubi.prom_sala)) {
             state.ubi.sala = state.ubi.sala + 1;
             printf("Te adentras en la sala del guardián...\n");
             printf("Al entrar notas un miasma que nubla tus sentidos... \n");
@@ -596,7 +597,7 @@ Gamestate iniciarCombate(Gamestate state, int *combat_victory){
 
             case 3:
                 if(rand() %100 < 15){
-                    printf("¡Has escapado con éxito!\n+");
+                    printf("¡Has escapado con éxito!\n");
                     *combat_victory = 2;
                 } else {
                     printf("Has fallado en escapar...\n");
@@ -704,7 +705,7 @@ Gamestate verificarSubidaNivel(Gamestate state){ // Developing
         state.player.defensa = state.player.defensa + 5;
         state.player.vida = state.player.vida + 5;
         state.player.exp_cap = state.player.exp_cap + 25;
-        printf("¡Has subido de nivel! +5 a todas las estadisticas.");
+        printf("¡Has subido de nivel! +5 a todas las estadisticas.\n");
     }
     return state;
 }
