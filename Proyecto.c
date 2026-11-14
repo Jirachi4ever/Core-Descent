@@ -56,6 +56,8 @@ Gamestate cargar_config(Gamestate state, bool *valida);
 
 void menu();
 
+void menu_highscores(void);
+
 void menu_combate(Gamestate state, int vida_actual);
 
 void menu_fueradecombate();
@@ -91,6 +93,8 @@ Gamestate cargar_partida(Gamestate state, bool *cargada);
 void jugar(Gamestate state);
 
 void registrar_highscore(Gamestate state, bool victoria);
+
+void cargar_objeto(Catalogo objetos);
 /*
 
 Modulos por configurar y concretar
@@ -118,9 +122,7 @@ int main(){
     bool main_menu = true, cargada, config_valida;
 
     cargar_bestiario(state.bestiary);
-    cargar_objeto(state.objetos);
-
-    
+    cargar_objeto(state.objetos);    
 
     /* Revisión de Bestiario (Para pruebas)
     for(int i; i < NMONSTRUOS; i++){
@@ -226,7 +228,7 @@ Gamestate cargar_config(Gamestate state, bool *valida){ // Cargado de la configu
         return state;
     }
 
-    if (state.ubi.cant_pisos <= 0 ||
+    if (state.ubi.cant_pisos <= 0 || // validación de datos
         state.ubi.total_salas <= 0 ||
         state.ubi.total_salas % state.ubi.cant_pisos != 0 ||
         state.player.vida <= 0 ||
@@ -350,7 +352,7 @@ Gamestate avanzarSala (Gamestate state, int combat_victory){
 
     if(combat_victory == 1){
         if((state.ubi.piso == 1) && (state.ubi.sala == state.ubi.prom_sala - 1)){
-            state.ubi.sala = 0;
+            state.ubi.sala = 1;
             state.ubi.piso = state.ubi.piso + 1;
             printf("Avanzas al siguiente piso...\n");
         }else if (state.ubi.piso == state.ubi.cant_pisos) {
@@ -359,7 +361,7 @@ Gamestate avanzarSala (Gamestate state, int combat_victory){
             printf("Al entrar notas un miasma que nubla tus sentidos... \n");
         }else if(state.ubi.sala == state.ubi.prom_sala){
             state.ubi.piso = state.ubi.piso + 1;
-            state.ubi.sala = 0;
+            state.ubi.sala = 1;
             printf("Avanzas al siguiente piso...\n");
         } else {
             state.ubi.sala = state.ubi.sala + 1;
@@ -554,14 +556,13 @@ Gamestate usar_objeto(Gamestate state, int ranura, bool en_combate,
     return state;
 }
 
-Gamestate iniciarCombate(Gamestate state, int *combat_victory){ // En desarrollo
+Gamestate iniciarCombate(Gamestate state, int *combat_victory){
     bool incombat = true;
     int op2, atk_atacante, def_defensor, daño_infligido;
     int ataque_base = state.player.ataque;
     int defensa_base = state.player.defensa;
     int vida_completa = state.player.vida;
     int vida_actual = vida_completa;
-    int prob_escape = rand() % 100;
     *combat_victory = 4; // Estado de espera (para evitar bucles)
 
     menu_combate(state, vida_actual);
@@ -594,7 +595,7 @@ Gamestate iniciarCombate(Gamestate state, int *combat_victory){ // En desarrollo
         break;
 
             case 3:
-                if(prob_escape < 15){
+                if(rand() %100 < 15){
                     printf("¡Has escapado con éxito!\n+");
                     *combat_victory = 2;
                 } else {
@@ -877,21 +878,71 @@ void jugar(Gamestate state){
     }
     if (partida_finalizada) {
         registrar_highscore(state, victoria);
+        remove("partida_guardada.txt");
     }
 }
 
-void menu_highscores(){
+void menu_highscores(void){
     FILE *highscores = fopen("highscores.txt", "r");
-    StringCorto nombre[5], aux_nombre;
-    int puntuación[5], aux, op;
+    StringCorto nombre[5] = {{0}};
+    int puntuación[5] = {0};
+    char linea[128];
+    int cantidad = 0, op;
     bool inmenu = true;
 
-    for (int i = 0; i < 5; i++){
-        strcpy(nombre[i],fscanf(highscores, "%s", aux_nombre));
-        puntuación[i] = fscanf(highscores, "%d",aux);
+    if (highscores == NULL) {
+        perror("No se pudo abrir highscores.txt");
+        return;
     }
-    
-    scanf("%d",op);
+
+    while (cantidad < 5 && fgets(linea, sizeof linea, highscores) != NULL) {
+        linea[strcspn(linea, "\r\n")] = '\0';
+
+        char *separador = strrchr(linea, ' ');
+        int puntos;
+        char extra;
+        if (separador == NULL || separador == linea ||
+            sscanf(separador + 1, "%d %c", &puntos, &extra) != 1) {
+            continue;
+        }
+
+        size_t largo_nombre = (size_t)(separador - linea);
+        if (largo_nombre >= sizeof nombre[cantidad]) {
+            continue;
+        }
+
+        *separador = '\0';
+        strcpy(nombre[cantidad], linea);
+        puntuación[cantidad] = puntos;
+        cantidad++;
+    }
+
+    if (ferror(highscores)) {
+        fprintf(stderr, "Error al leer highscores.txt\n");
+        fclose(highscores);
+        return;
+    }
+    if (fclose(highscores) == EOF) {
+        fprintf(stderr, "Error al cerrar highscores.txt\n");
+        return;
+    }
+
+    printf("<===========================================>\n");
+    if (cantidad == 0) {
+        printf("Todavía no hay puntuaciones registradas.\n");
+    }
+    for (int i = 0; i < cantidad; i++) {
+        printf("[%d] - Nombre: %s Puntuación: %d\n",
+               i + 1, nombre[i], puntuación[i]);
+    }
+    printf("[6] - Salir\n");
+    printf("<===========================================>\n");
+    printf("Seleccione una opción: ");
+    if (scanf("%d", &op) != 1) {
+        fprintf(stderr, "Entrada no válida.\n");
+        return;
+    }
+
     while(inmenu){
         switch (op)
         {
@@ -907,25 +958,17 @@ void menu_highscores(){
             break;
         
         default:
+            printf("Opción no válida.\n");
             break;
         }
         if(inmenu){
-            scanf("%d",op);
+            printf("Seleccione otra opción: ");
+            if (scanf("%d", &op) != 1) {
+                fprintf(stderr, "Entrada no válida.\n");
+                return;
+            }
         }
     }
-    
-    printf("<===========================================>\n");
-    printf("[1] - Nombre: %s Puntuación: %d\n", nombre[0], puntuación[0]);
-    printf("[2] - Nombre: %s Puntuación: %d\n", nombre[1], puntuación[1]);
-    printf("[3] - Nombre: %s Puntuación: %d\n", nombre[2], puntuación[2]);
-    printf("[4] - Nombre: %s Puntuación: %d\n", nombre[3], puntuación[3]);
-    printf("[5] - Nombre: %s Puntuación: %d\n", nombre[4], puntuación[4]);
-    printf("[6] - Salir\n");
-    printf("<===========================================>\n");
-}
-
-void cargar_highscores(){
-
 }
 
 void registrar_highscore(Gamestate state, bool victoria){
