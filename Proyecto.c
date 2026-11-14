@@ -9,8 +9,8 @@
 typedef char StringLargo[100];
 typedef char StringCorto [30];
 
-enum {NMONSTRUOS = 10};
-enum {NOBJETOS = 5};
+enum {NMONSTRUOS = 11};
+enum {NOBJETOS = 6};
 
 typedef struct{
     StringCorto nombre;
@@ -32,14 +32,6 @@ typedef struct{
     int id, value;
 }Items;
 
-typedef struct {
-    Jugador player;
-    int piso;
-    int cuartos;
-    int enemigos;
-    int objetos;
-} Resultado;
-
 typedef Items Catalogo [NOBJETOS];
 
 typedef Entity Entities [NMONSTRUOS];
@@ -51,23 +43,28 @@ typedef struct{
     Catalogo objetos, inv;
 }Gamestate;
 
-Gamestate cargar_config(Gamestate state); 
+typedef struct{
+    StringCorto nombre;
+    int puntuacion;
+}Highscore;
 
-void cargar_bestiario(Entity *bestiary); 
+Gamestate cargar_config(Gamestate state, bool *valida); 
 
-void cargar_objeto(Items *objetos);
+void cargar_bestiario(Entities bestiary);
+
+Gamestate cargar_config(Gamestate state, bool *valida);
 
 void menu();
 
-void menu_combate(Gamestate state);
+void menu_combate(Gamestate state, int vida_actual);
 
 void menu_fueradecombate();
 
-Gamestate fueradecombate(Gamestate state);
+Gamestate fueradecombate(Gamestate state, int combat_victory, bool *ingame);
 
 void menu_inventario(Gamestate state);
 
-Gamestate mochila(Gamestate state);
+Gamestate mochila(Gamestate state, bool en_combate, int *vida_actual, int vida_max);
 
 void seed(int semilla);
 
@@ -75,9 +72,9 @@ Gamestate insertar_nombre (Gamestate state);
 
 Gamestate SeleccionarEnemigo(Gamestate state);
 
-Gamestate avanzarSala (Gamestate state);
+Gamestate avanzarSala (Gamestate state, int combat_victory);
 
-void iniciarCombate(Gamestate state, int *victory);
+Gamestate iniciarCombate(Gamestate state, int *victory);
 
 int calcularDaño(int ataque_atacante, int defensa_defensor);
 
@@ -85,8 +82,15 @@ Gamestate otorgarRecompensa(Gamestate state); // Completo (Por testear)
 
 Gamestate verificarSubidaNivel(Gamestate state); // En desarrollo
 
-void usar_objeto(Gamestate state); // En desarrollo
+Gamestate usar_objeto(Gamestate state, int ranura, bool en_combate, int *vida_actual, int vida_max);
 
+void guardar_partida(Gamestate state, bool *guardado);
+
+Gamestate cargar_partida(Gamestate state, bool *cargada);
+
+void jugar(Gamestate state);
+
+void registrar_highscore(Gamestate state, bool victoria);
 /*
 
 Modulos por configurar y concretar
@@ -99,9 +103,9 @@ int total_objetos, char tipo_enemigo[]); // Completo
 void verificarSubidaNivel(EstadoJuego *estado); // Completo
 
 Módulo 4 (Fase de Pruebas):
-void usar_objeto(EstadoJuego *estado); 
+void usar_objeto(EstadoJuego *estado); // Completo
 
-Módulo 5 (En desarrollo):
+Módulo 5 (Fase de Pruebas):
 void guardar_partida(EstadoJuego *estado);
 int cargar_partida(EstadoJuego *estado);
 void registrar_highscore(EstadoJuego estado, bool victoria);
@@ -110,15 +114,17 @@ void registrar_highscore(EstadoJuego estado, bool victoria);
 int main(){
 
     Gamestate state = {0};
-    int op, combat_victory = 0;
-    bool main_menu = true, ingame = false, victoria = false;
+    int op;
+    bool main_menu = true, cargada, config_valida;
 
     cargar_bestiario(state.bestiary);
     cargar_objeto(state.objetos);
 
+    
+
     /* Revisión de Bestiario (Para pruebas)
     for(int i; i < NMONSTRUOS; i++){
-        printf("%s %d %d %d %d %d\n",
+        printf("%s %d %d %d %d %d %d %d%d %d %d %d\n",
         state.bestiary[i].name,
         state.bestiary[i].id,
         state.bestiary[i].hp,
@@ -143,10 +149,15 @@ int main(){
         switch(op)
         {
             case 1:
+                state = cargar_config(state, &config_valida); // Se carga toda la configuración
+
+                if (!config_valida) {
+                break;
+                }
+
+                state.ubi.prom_sala = state.ubi.total_salas / state.ubi.cant_pisos;
                 main_menu = false;
-                ingame = true;
-                state = cargar_config(state); // Se carga toda la configuración
-                state.player.nivel=1;
+
                 srand(state.ubi.seed); // Empieza la aleatorización por semilla
                 
                 state = insertar_nombre(state); // El usuario ingresa su nombre
@@ -156,36 +167,20 @@ int main(){
                 state.player.nombre,state.player.vida,state.player.ataque,state.player.defensa,
                 state.player.nivel,state.player.exp,state.ubi.piso,state.ubi.sala,state.player.exp_cap);*/
                 
-                printf("Una vez en la mazmorra notas algo moviendose en la oscuridad...\n");
-                printf("Piensas en volver, más tu cometido no te permite retroceder.\n");
-                
-                while(ingame){
-                    state = fueradecombate(state);
+                jugar(state);
+            break;
 
-                    state = SeleccionarEnemigo(state);
-
-                    printf("¡%s ha aparecido!\n", state.oponente[0].name);
-
-                    iniciarCombate(state, &combat_victory);
-
-                    if(combat_victory == 1){ // Jugador Ganó
-                        state = otorgarRecompensa(state);
-                        avanzarSala(state);
-                    } else if (combat_victory == 0) { // Jugador perdió
-
-                        ingame = false;
-                    }else{ // Jugador escapó
-                        
-                    }
+            case 2:
+                state = cargar_partida(state, &cargada);
+                if (cargada) {
+                    main_menu = false;
+                    srand(state.ubi.seed);
+                    jugar(state);
                 }
             break;
 
-            case 2: //cargar partida
-                
-            break;
-
-            case 3://highscore
-                    mostrar_highscores();
+            case 3:
+                menu_highscores();
             break;
 
             case 4:
@@ -202,15 +197,16 @@ int main(){
             printf("Seleccione otra opción.");
             scanf("%d", &op);
         }
+        
 
     }
 
 return 0;
 }
 
-Gamestate cargar_config(Gamestate state){ // Cargado de la configuración general de juego
+Gamestate cargar_config(Gamestate state, bool *valida){ // Cargado de la configuración general de juego
     FILE *config;
-
+    *valida = false;
     config = fopen("config.txt", "r");
 
     if (config == NULL){
@@ -218,11 +214,35 @@ Gamestate cargar_config(Gamestate state){ // Cargado de la configuración genera
         return state;
     }
 
-    //Cargado de datos, Semilla, Cantidad de Pisos, Total de Salas, Stats y "ubicación" del jugador
-    fscanf(config, "%d %d %d",&state.ubi.seed,&state.ubi.cant_pisos,&state.ubi.total_salas); 
-    fscanf(config, "%d %d %d %d %d %d %d %d",&state.player.vida,&state.player.ataque,&state.player.defensa,
+    int leidos1 = fscanf(config, "%d %d %d",&state.ubi.seed,&state.ubi.cant_pisos,&state.ubi.total_salas);
+    int leidos2 = fscanf(config, "%d %d %d %d %d %d %d %d",&state.player.vida,&state.player.ataque,&state.player.defensa,
         &state.player.nivel,&state.player.exp,&state.ubi.piso,&state.ubi.sala,&state.player.exp_cap);
+
     fclose(config);
+
+    if (leidos1 != 3 || leidos2 != 8) {
+        printf("config.txt está incompleto o tiene un formato inválido.\n");
+  
+        return state;
+    }
+
+    if (state.ubi.cant_pisos <= 0 ||
+        state.ubi.total_salas <= 0 ||
+        state.ubi.total_salas % state.ubi.cant_pisos != 0 ||
+        state.player.vida <= 0 ||
+        state.player.ataque <= 0 ||
+        state.player.defensa < 0 ||
+        state.player.nivel < 1 ||
+        state.player.exp < 0 ||
+        state.player.exp_cap <= 0) {
+        printf("config.txt contiene valores inválidos.\n");
+        return state;
+    }
+
+    //Cargado de datos, Semilla, Cantidad de Pisos, Total de Salas, Stats y "ubicación" del jugador
+     
+    
+    *valida = true;
     return state;
 }
 
@@ -320,21 +340,34 @@ Gamestate SeleccionarEnemigo(Gamestate state){
 return state;
 }
 
-Gamestate avanzarSala (Gamestate state){
+Gamestate avanzarSala (Gamestate state, int combat_victory){
 
-    if((state.ubi.piso == 1) && (state.ubi.sala == state.ubi.prom_sala - 1)){
-        state.ubi.sala = 0;
-        state.ubi.piso = state.ubi.piso + 1;
-        printf("Avanzas al siguiente piso...\n");
-    }
-    if(state.ubi.sala == state.ubi.prom_sala){
-        state.ubi.piso = state.ubi.piso + 1;
-        state.ubi.sala = 0;
-        printf("Avanzas al siguiente piso...\n");
-    } else {
+    if((state.ubi.piso == 1) && (state.ubi.sala == 0)){
         state.ubi.sala = state.ubi.sala + 1;
         printf("Avanzas una sala...\n");
+        return state;
     }
+
+    if(combat_victory == 1){
+        if((state.ubi.piso == 1) && (state.ubi.sala == state.ubi.prom_sala - 1)){
+            state.ubi.sala = 0;
+            state.ubi.piso = state.ubi.piso + 1;
+            printf("Avanzas al siguiente piso...\n");
+        }else if (state.ubi.piso == state.ubi.cant_pisos) {
+            state.ubi.sala = state.ubi.sala + 1;
+            printf("Te adentras en la sala del guardián...\n");
+            printf("Al entrar notas un miasma que nubla tus sentidos... \n");
+        }else if(state.ubi.sala == state.ubi.prom_sala){
+            state.ubi.piso = state.ubi.piso + 1;
+            state.ubi.sala = 0;
+            printf("Avanzas al siguiente piso...\n");
+        } else {
+            state.ubi.sala = state.ubi.sala + 1;
+            printf("Avanzas una sala...\n");
+        }
+    }
+    
+    printf("Piso: %d Sala: %d \n", state.ubi.piso, state.ubi.sala);
     return state;
 }
 
@@ -355,9 +388,9 @@ void menu_fueradecombate(){
     printf("<===========================================>\n");
 }
 
-Gamestate fueradecombate(Gamestate state){
+Gamestate fueradecombate(Gamestate state, int combat_victory, bool *ingame){
     int op;
-    bool inmenu = true;
+    bool inmenu = true, guardado;
 
     while(inmenu){
         menu_fueradecombate();
@@ -366,30 +399,44 @@ Gamestate fueradecombate(Gamestate state){
         switch (op)
         {
         case 1:
-            state = avanzarSala(state);
+
+            state = avanzarSala(state, combat_victory);
             inmenu = false;
-            break;
+
+        break;
 
         case 2:
-            mochila(state);
-            break;
-        
+
+            state = mochila(state, false, NULL, 0);
+            
+        break;
+
         case 3:
-            /* Guardar y salir */
-            break;
-        
+
+            guardar_partida(state, &guardado);
+            if(guardado){
+                inmenu = false;
+                *ingame = false;
+            }
+
+        break;
+
         default:
-            break;
+
+            printf("ERROR! Opcion no valida.\n");
+
+        break;
         }
     }
 return state;
 }
 
-void menu_combate(Gamestate state){
+void menu_combate(Gamestate state, int vida_actual){
 
     printf("<===========================================>\n");
-    printf("%s: %d HP    %s: %d HP\n",state.player.nombre,state.player.vida
-    ,state.oponente[0].name,state.oponente[0].hp);
+    printf("%s: %d HP    %s: %d HP\n",
+           state.player.nombre, vida_actual,
+           state.oponente[0].name, state.oponente[0].hp);
     printf("<===========================================>\n");
     printf("[1] - Atacar\n");
     printf("[2] - Mochila\n");
@@ -414,28 +461,24 @@ void menu_inventario(Gamestate state){
 
 }
 
-Gamestate mochila(Gamestate state){
+Gamestate mochila(Gamestate state, bool en_combate, int *vida_actual, int vida_max){
     int op_items;
     bool inmenu = true;
 
-    menu_inventario(state);
-    scanf("%d", &op_items);
-    
     while(inmenu){
+        menu_inventario(state);
+        if (scanf("%d", &op_items) != 1) {
+            printf("Entrada no valida.\n");
+            return state;
+        }
+
         switch(op_items)
         {
             case 1:
-                //usar_objeto(state);
-                inmenu = false;
-            break;
-
             case 2:
-                //usar_objeto(state);
-                inmenu = false;
-            break;
-
             case 3:
-                //usar_objeto(state);
+                state = usar_objeto(state, op_items - 1, en_combate,
+                                    vida_actual, vida_max);
                 inmenu = false;
             break;
 
@@ -447,17 +490,81 @@ Gamestate mochila(Gamestate state){
                 printf("ERROR! Opcion no valida.\n");            
             break;
         }
-        if(inmenu){
-                scanf("%d", &op_items);
-        }
     }
+    return state;
 }
 
-void iniciarCombate(Gamestate state, int *combat_victory){ // En desarrollo
+Gamestate usar_objeto(Gamestate state, int ranura, bool en_combate,
+                      int *vida_actual, int vida_max){
+    if (ranura < 0 || ranura >= 3 || state.inv[ranura].id == 0) {
+        printf("No hay item para utilizar.\n");
+        return state;
+    }
+
+    if (strcmp(state.inv[ranura].effect, "Healing") == 0 ||
+        strcmp(state.inv[ranura].effect, "Healing_MAX") == 0) {
+        if (!en_combate || vida_actual == NULL) {
+            printf("Solo puedes curarte durante un combate.\n");
+            return state;
+        }
+
+        if (strcmp(state.inv[ranura].effect, "Healing_MAX") == 0) {
+            *vida_actual = vida_max;
+        } else {
+            *vida_actual += state.inv[ranura].value;
+            if (*vida_actual > vida_max) {
+                *vida_actual = vida_max;
+            }
+        }
+        printf("Vida actual: %d/%d.\n", *vida_actual, vida_max);
+    } else if (strcmp(state.inv[ranura].effect, "Damage_Buff") == 0) {
+        if (!en_combate) {
+            printf("Este objeto solo puede usarse durante un combate.\n");
+            return state;
+        }
+
+        state.player.ataque += state.inv[ranura].value;
+        printf("Tu ataque aumenta en %d durante este combate.\n",
+               state.inv[ranura].value);
+    } else if (strcmp(state.inv[ranura].effect, "Defense_Buff") == 0) {
+        if (!en_combate) {
+            printf("Este objeto solo puede usarse durante un combate.\n");
+            return state;
+        }
+
+        state.player.defensa += state.inv[ranura].value;
+        printf("Tu defensa aumenta en %d durante este combate.\n",
+               state.inv[ranura].value);
+    } else if (strcmp(state.inv[ranura].effect, "Buff_Max_Damage") == 0) {
+        if (en_combate) {
+            printf("Este objeto solo puede usarse fuera de combate.\n");
+            return state;
+        }
+
+        state.player.ataque += state.inv[ranura].value;
+        printf("Tu ataque aumenta en %d permanentemente.\n",
+               state.inv[ranura].value);
+    } else {
+        printf("Efecto desconocido: %s. No se consumo el objeto.\n",
+               state.inv[ranura].effect);
+        return state;
+    }
+
+    memset(&state.inv[ranura], 0, sizeof(state.inv[ranura]));
+    return state;
+}
+
+Gamestate iniciarCombate(Gamestate state, int *combat_victory){ // En desarrollo
     bool incombat = true;
     int op2, atk_atacante, def_defensor, daño_infligido;
+    int ataque_base = state.player.ataque;
+    int defensa_base = state.player.defensa;
+    int vida_completa = state.player.vida;
+    int vida_actual = vida_completa;
+    int prob_escape = rand() % 100;
+    *combat_victory = 4; // Estado de espera (para evitar bucles)
 
-    menu_combate(state);
+    menu_combate(state, vida_actual);
     scanf("%d", &op2);
 
     while (incombat){
@@ -476,31 +583,25 @@ void iniciarCombate(Gamestate state, int *combat_victory){ // En desarrollo
                 if(state.oponente[0].hp > 0){
                     atk_atacante = state.oponente[0].atk, def_defensor = state.player.defensa;
                     daño_infligido = calcularDaño(atk_atacante, def_defensor);
-                    state.player.vida = state.player.vida - daño_infligido;
+                    vida_actual = vida_actual - daño_infligido;
                     printf("¡Has recibido %d puntos de daño!\n", daño_infligido);
                 }
 
             break;
 
             case 2:
-
-                menu_inventario(state);
-
-            break;
+                state = mochila(state, true, &vida_actual, vida_completa);
+        break;
 
             case 3:
-
-                int prob_escape;
-                prob_escape = rand() % 100;
                 if(prob_escape < 15){
-                    printf("¡Has escapado con éxito!");
+                    printf("¡Has escapado con éxito!\n+");
                     *combat_victory = 2;
-                    incombat = false;
                 } else {
-                    printf("Has fallado en escapar...");
+                    printf("Has fallado en escapar...\n");
                     atk_atacante = state.oponente[0].atk, def_defensor = state.player.defensa;
                     daño_infligido = calcularDaño(atk_atacante, def_defensor);
-                    state.player.vida = state.player.vida - daño_infligido;
+                    vida_actual = vida_actual - daño_infligido;
                     printf("¡Has recibido %d puntos de daño!\n", daño_infligido);
                 }
 
@@ -511,21 +612,32 @@ void iniciarCombate(Gamestate state, int *combat_victory){ // En desarrollo
             break;
         }
 
-        if(state.player.vida <= 0) {
+        if((state.oponente[0].rarity == 3) && (state.oponente[0].hp <= 0)){ // Derrota del Jefe Final
+            *combat_victory = 5;
+            incombat = false;
+            break;
+        }
+
+        if(vida_actual <= 0) { // Pierde el jugador
             *combat_victory = 0;
             incombat = false;
             break;
-        }
-            if (state.oponente[0].hp <= 0){
+        }else if (state.oponente[0].hp <= 0){ // Derrota del enemigo
             *combat_victory = 1;
+            incombat = false;
+            break;
+        } else if (*combat_victory == 2){ // Escape exitoso
             incombat = false;
             break;
         }
 
-    menu_combate(state);
+    menu_combate(state, vida_actual);
     scanf("%d", &op2);
     }
 
+    state.player.ataque = ataque_base;
+    state.player.defensa = defensa_base;
+    return state;
 }
 
 int calcularDaño(int atk_atacante, int def_defensor){
@@ -545,51 +657,41 @@ int calcularDaño(int atk_atacante, int def_defensor){
     return damage;
 }
 
-Gamestate otorgarRecompensa(Gamestate state){
+Gamestate otorgarRecompensa(Gamestate state) {
+    int exp_comun = 25;
+    int exp_raro = 40;
 
-    int id_random, total_inv = 3, exp_comun = 25, exp_raro = 40;
-
-    if(state.oponente[0].rarity == 2){ // Monstruo Raro
-        for(int l = 0; l < total_inv; l++){
-            if (state.inv[l].id == '\0'){
-                id_random = rand() % NOBJETOS;
-                for (int m = 0; m < NOBJETOS; m++){
-                    if(id_random == state.objetos[m].id){
-                        state.inv[l] = state.objetos[m];
-                        printf("¡Has recibido %s!\n", state.objetos[m].name);
-                        break;
-                    }
-                }
-            break;
+    if (state.oponente[0].rarity == 2) {
+        for (int l = 0; l < 3; l++) {
+            if (state.inv[l].id == 0) {
+                int indice = rand() % NOBJETOS;
+                state.inv[l] = state.objetos[indice];
+                printf("¡Has recibido %s!\n", state.inv[l].name);
+                break;
             }
         }
-        state.player.exp = state.player.exp + exp_raro;
+
+        state.player.exp += exp_raro;
         printf("Obtienes %d puntos de experiencia\n", exp_raro);
     }
 
-    if(state.oponente[0].rarity == 1){ //Monstruo Común
-        id_random = (rand() % 100) + 1;
-        if(id_random <= 25){
-            for(int l = 0; l < 3; l++){
-                if (state.inv[l].id == '\0'){
-                    id_random = rand() % NOBJETOS;
-                    for (int m = 0; m < NOBJETOS; m++){
-                        if(id_random == state.objetos[m].id){
-                            state.inv[l] = state.objetos[m];
-                            printf("¡Has recibido %s\n!", state.objetos[m].name);
-                            break;
-                        }
-                    }
-                break;
+    if (state.oponente[0].rarity == 1) {
+        if (rand() % 100 < 25) {
+            for (int l = 0; l < 3; l++) {
+                if (state.inv[l].id == 0) {
+                    int indice = rand() % NOBJETOS;
+                    state.inv[l] = state.objetos[indice];
+                    printf("¡Has recibido %s!\n", state.inv[l].name);
+                    break;
                 }
             }
         }
-        state.player.exp = state.player.exp + exp_comun;
+
+        state.player.exp += exp_comun;
         printf("Obtienes %d puntos de experiencia\n", exp_comun);
     }
 
-state = verificarSubidaNivel(state);
-return state;
+    return verificarSubidaNivel(state);
 }
 
 Gamestate verificarSubidaNivel(Gamestate state){ // Developing
@@ -604,6 +706,353 @@ Gamestate verificarSubidaNivel(Gamestate state){ // Developing
         printf("¡Has subido de nivel! +5 a todas las estadisticas.");
     }
     return state;
+}
+
+void guardar_partida(Gamestate state, bool *guardado){
+    *guardado = false;
+
+    FILE *out = fopen("partida_guardada.txt", "w");
+
+    if (out == NULL) {
+        printf("No se pudo guardar la partida");
+        return;
+    }
+
+    if (fprintf(out, "%d %d %d\n%d %d %d %d %d %d %d %d\n%d %d %d\n",
+                state.ubi.seed,
+                state.ubi.cant_pisos,
+                state.ubi.total_salas,
+                state.player.vida,
+                state.player.ataque,
+                state.player.defensa,
+                state.player.nivel,
+                state.player.exp,
+                state.ubi.piso,
+                state.ubi.sala,
+                state.player.exp_cap,
+                state.inv[0].id,
+                state.inv[1].id,
+                state.inv[2].id) < 0) {
+        printf("Error al escribir la partida");
+        fclose(out);
+        return;
+    }
+
+    if(fprintf(out, "%s",state.player.nombre) < 0){
+        printf("Error al escribir el nombre");
+        fclose(out);
+        return;
+    }
+
+    if (fclose(out) == EOF) {
+        printf("Error al cerrar el archivo de partida");
+        return;
+    }
+
+    printf("Partida guardada.\n");
+    *guardado = true;
+}
+
+Gamestate cargar_partida(Gamestate state, bool *cargada){
+    FILE *in = fopen("partida_guardada.txt", "r");
+    Gamestate partida = state;
+    int ids_inventario[3];
+    int conversiones;
+
+    *cargada = false;
+    if (in == NULL) {
+        printf("No se pudo abrir partida_guardada.txt");
+        return state;
+    }
+
+    conversiones = fscanf(in,
+        "%d %d %d %d %d %d %d %d %d %d %d %d %d %d %29[^\n]",
+        &partida.ubi.seed,
+        &partida.ubi.cant_pisos,
+        &partida.ubi.total_salas,
+        &partida.player.vida,
+        &partida.player.ataque,
+        &partida.player.defensa,
+        &partida.player.nivel,
+        &partida.player.exp,
+        &partida.ubi.piso,
+        &partida.ubi.sala,
+        &partida.player.exp_cap,
+        &ids_inventario[0],
+        &ids_inventario[1],
+        &ids_inventario[2],
+        partida.player.nombre);
+
+    if (conversiones != 15) {
+        fprintf(stderr, "El archivo de guardado esta incompleto o tiene un formato invalido.\n");
+        fclose(in);
+        return state;
+    }
+
+    if (partida.ubi.cant_pisos <= 0 ||
+        partida.ubi.total_salas <= 0 ||
+        partida.ubi.piso < 1 ||
+        partida.ubi.piso > partida.ubi.cant_pisos ||
+        partida.ubi.sala < 0 ||
+        partida.player.vida < 0 ||
+        partida.player.exp_cap <= 0) {
+        fprintf(stderr, "El archivo de guardado contiene valores invalidos.\n");
+        fclose(in);
+        return state;
+    }
+
+    if (fclose(in) == EOF) {
+        printf("Error al cerrar el archivo de guardado");
+        return state;
+    }
+
+    memset(partida.inv, 0, sizeof(partida.inv));
+    for (int ranura = 0; ranura < 3; ranura++) {
+        if (ids_inventario[ranura] == 0) {
+            continue;
+        }
+
+        bool encontrado = false;
+        for (int i = 0; i < NOBJETOS; i++) {
+            if (partida.objetos[i].id == ids_inventario[ranura]) {
+                partida.inv[ranura] = partida.objetos[i];
+                encontrado = true;
+                break;
+            }
+        }
+
+        if (!encontrado) {
+            fprintf(stderr, "El objeto con ID %d del guardado no existe en el catalogo.\n",
+                    ids_inventario[ranura]);
+            return state;
+        }
+    }
+
+    partida.ubi.prom_sala =
+        partida.ubi.total_salas / partida.ubi.cant_pisos;
+    memset(partida.oponente, 0, sizeof(partida.oponente));
+    *cargada = true;
+    printf("Partida cargada.\n");
+    return partida;
+}
+
+void jugar(Gamestate state){
+    int combat_victory = 0;
+    bool ingame = true, partida_finalizada = false, victoria;
+
+    printf("Tu cometido te insta a seguir adelante.\n");
+    state = fueradecombate(state, combat_victory, &ingame);
+    if (!ingame) {
+        return;
+    }
+
+    state = SeleccionarEnemigo(state);
+
+    while (ingame) {
+        printf("¡%s ha aparecido!\n", state.oponente[0].name);
+        state = iniciarCombate(state, &combat_victory);
+
+        if (combat_victory == 1) {
+            state = otorgarRecompensa(state);
+            state = fueradecombate(state, combat_victory, &ingame);
+            if (ingame) {
+                state = SeleccionarEnemigo(state);
+            }
+        } else if (combat_victory == 0) {
+            ingame = false;
+            partida_finalizada = true;
+            victoria = false;
+        } else if (combat_victory == 5) {
+            printf("¡Has cumplido tu cometido y liberado la mazmorra de todos los males!\n");
+            printf("Más el mal siempre está al acecho, puede que vuelvas a adentrarte en esta oscuridad...\n");
+            ingame = false;
+            partida_finalizada = true;
+            victoria = true;
+        } else {
+            state = fueradecombate(state, combat_victory, &ingame);
+            if (ingame) {
+                state = SeleccionarEnemigo(state);
+            }
+        }
+    }
+    if (partida_finalizada) {
+        registrar_highscore(state, victoria);
+    }
+}
+
+void menu_highscores(){
+    FILE *highscores = fopen("highscores.txt", "r");
+    StringCorto nombre[5], aux_nombre;
+    int puntuación[5], aux, op;
+    bool inmenu = true;
+
+    for (int i = 0; i < 5; i++){
+        strcpy(nombre[i],fscanf(highscores, "%s", aux_nombre));
+        puntuación[i] = fscanf(highscores, "%d",aux);
+    }
+    
+    scanf("%d",op);
+    while(inmenu){
+        switch (op)
+        {
+            case 1:
+            case 2:
+            case 3:
+            case 4:
+            case 5:
+                printf("El nombre de un gran guerrero tallado en piedra...\n");
+            break;
+            case 6:
+                inmenu = false;
+            break;
+        
+        default:
+            break;
+        }
+        if(inmenu){
+            scanf("%d",op);
+        }
+    }
+    
+    printf("<===========================================>\n");
+    printf("[1] - Nombre: %s Puntuación: %d\n", nombre[0], puntuación[0]);
+    printf("[2] - Nombre: %s Puntuación: %d\n", nombre[1], puntuación[1]);
+    printf("[3] - Nombre: %s Puntuación: %d\n", nombre[2], puntuación[2]);
+    printf("[4] - Nombre: %s Puntuación: %d\n", nombre[3], puntuación[3]);
+    printf("[5] - Nombre: %s Puntuación: %d\n", nombre[4], puntuación[4]);
+    printf("[6] - Salir\n");
+    printf("<===========================================>\n");
+}
+
+void cargar_highscores(){
+
+}
+
+void registrar_highscore(Gamestate state, bool victoria){
+    Highscore registros[5], nuevo;
+    int cantidad = 0;
+    char linea[256];
+
+    if (!victoria) {
+        return;
+    }
+
+    FILE *archivo = fopen("highscores.txt", "a+");
+    if (archivo == NULL) {
+        printf("No se pudo abrir highscores.txt");
+        return;
+    }
+
+    rewind(archivo);
+    while (fgets(linea, sizeof(linea), archivo) != NULL) {
+        if (strchr(linea, '\n') == NULL && !feof(archivo)) {
+            int caracter;
+            while ((caracter = fgetc(archivo)) != '\n' && caracter != EOF) {
+            }
+            printf("Se ignoro una linea demasiado larga de highscores.txt.\n");
+            continue;
+        }
+
+        linea[strcspn(linea, "\r\n")] = '\0';
+        char *separador = strrchr(linea, ' ');
+        if (separador == NULL) {
+            continue;
+        }
+
+        if (strcmp(separador + 1, "Derrotado") == 0) {
+            continue;
+        }
+
+        if (strcmp(separador + 1, "Victorioso") == 0) {
+            int estadisticas[7];
+            char extra;
+            bool linea_valida = true;
+            *separador = '\0';
+
+            for (int i = 6; i >= 0; i--) {
+                separador = strrchr(linea, ' ');
+                if (separador == NULL ||
+                    sscanf(separador + 1, "%d%c", &estadisticas[i],
+                           &extra) != 1) {
+                    linea_valida = false;
+                    break;
+                }
+                *separador = '\0';
+            }
+            if (!linea_valida || linea[0] == '\0' ||
+                strlen(linea) >= sizeof(nuevo.nombre)) {
+                continue;
+            }
+
+            memcpy(nuevo.nombre, linea, strlen(linea) + 1);
+            nuevo.puntuacion = estadisticas[3] * 10 +
+                               estadisticas[5] * 20 +
+                               estadisticas[6] * 10 + 100; //
+        } else {
+            int puntuacion;
+            char extra;
+            if (sscanf(separador + 1, "%d%c", &puntuacion, &extra) != 1 ||
+                separador == linea ||
+                (size_t)(separador - linea) >= sizeof(nuevo.nombre)) {
+                continue;
+            }
+            *separador = '\0';
+            memcpy(nuevo.nombre, linea, (size_t)(separador - linea) + 1);
+            nuevo.puntuacion = puntuacion;
+        }
+
+        if (cantidad == 5) {
+            for (int i = 1; i < 5; i++) {
+                registros[i - 1] = registros[i];
+            }
+            cantidad--;
+        }
+        registros[cantidad] = nuevo;
+        cantidad++;
+    }
+
+    if (ferror(archivo)) {
+        printf("No se pudo leer highscores.txt");
+        fclose(archivo);
+        return;
+    }
+    if (fclose(archivo) == EOF) {
+        printf("No se pudo cerrar highscores.txt");
+        return;
+    }
+
+    strcpy(nuevo.nombre, state.player.nombre);
+    nuevo.puntuacion = state.player.nivel * 10 +
+                       state.ubi.piso * 20 +
+                       state.ubi.sala * 10 + 100;
+
+    if (cantidad == 5) {
+        for (int i = 1; i < 5; i++) {
+            registros[i - 1] = registros[i];
+        }
+        cantidad--;
+    }
+    registros[cantidad] = nuevo;
+    cantidad++;
+
+    FILE *highscores = fopen("highscores.txt", "w");
+    if (highscores == NULL) {
+        printf("No se pudo abrir highscores.txt para escribir");
+        return;
+    }
+
+    for (int i = 0; i < cantidad; i++) {
+        if (fprintf(highscores, "%s %d\n",
+                    registros[i].nombre,
+                    registros[i].puntuacion) < 0) {
+            printf("No se pudo escribir en highscores.txt");
+            fclose(highscores);
+            return;
+        }
+    }
+    if (fclose(highscores) == EOF) {
+        printf("No se pudo cerrar highscores.txt");
+    }
 }
 
 Gamestate insertar_nombre(Gamestate state) { // Nombre del jugador

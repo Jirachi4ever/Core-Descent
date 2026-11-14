@@ -18,3 +18,5 @@ Rey Rata
 9 25 20 10 2
 Araña Gigante
 10 50 20 15 2
+Leta Señor del Terror
+11 60 30 20 3

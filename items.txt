@@ -8,3 +8,5 @@ Elixir de vida
 4 100 Healing_MAX
 Poción Curativa Grande
 5 50 Healing
+Piedra de Afilar
+6 5 Buff_Max_Damage
